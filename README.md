@@ -111,5 +111,11 @@ GitHub Actions 每次 push 都會從原始碼編出 APK（含路由小程式）�
 No network access beyond `127.0.0.1`, no data collection. The accessibility service only filters volume keys and reads the
 foreground package name; it does not read screen text. See [SECURITY.md](SECURITY.md).
 
+## 幫忙翻譯 / Help translate
+
+SplitAudio 目前有英文和繁體中文。想翻成你的語言？看 [TRANSLATING.md](TRANSLATING.md)，大約 15～30 分鐘。
+
+SplitAudio is available in English and Traditional Chinese. Want it in your language? See [TRANSLATING.md](TRANSLATING.md) — it takes about 15–30 minutes.
+
 ## 授權 / License
 MIT
