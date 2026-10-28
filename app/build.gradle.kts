@@ -9,8 +9,8 @@ android {
         applicationId = "app.splitaudio"
         minSdk = 29
         targetSdk = 34
-        versionCode = 6
-        versionName = "0.3.0"
+        versionCode = 7
+        versionName = "0.3.1"
     }
     // Release signing: only active when RELEASE_SIGNING_JSON points to an existing file
     // (local release builds). Without it (e.g. CI) the build behaves exactly as before.

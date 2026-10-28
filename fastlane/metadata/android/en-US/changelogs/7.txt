@@ -1,0 +1,1 @@
+Fix: music now resumes after voice typing / the keyboard mic (e.g. Gboard). With "video doesn't interrupt music" on, Android never gave playback back to the music app after the mic closed, so it stayed paused.

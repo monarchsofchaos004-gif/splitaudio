@@ -7,6 +7,8 @@
 // While another app is in a call / voice chat (audio mode not NORMAL, e.g. a camera app's talk button), Android sends
 //   media to the earpiece. Multi audio focus keeps the music playing there, so the music is paused for the duration
 //   and resumed when the mode is back to NORMAL (only if this process paused it).
+// Voice typing / assistant mic (transient focus): the music app pauses itself; with multi audio focus Android never hands
+//   focus back, so the helper presses play once the transient holder is gone (focusWait, 0.3.1).
 // Exits by itself after Bluetooth has been gone 2 min, or the music app has been silent 10 min.
 //   If this process dies, the rule dies with it -> everything falls back to Bluetooth (never silence).
 // Custom mode (0.3): "AppRoute map <file>" reads per-app outputs instead (see mapMain).
@@ -51,7 +53,7 @@ public class AppRoute {
                 pausedForCall = false;
                 if (!musicPlaying(music)) { sh("cmd media_session dispatch play"); log("call/voice mode over -> music resumed"); }
             }
-            if (musicPlaying(music) || pausedForCall) lastMusic = now;   // a long call must not end the helper
+            if (musicPlaying(music) || pausedForCall || focusArmed) lastMusic = now;   // a long call must not end the helper
             boolean want = bt && spk != null && now - lastMusic < 15000 && !call;   // drop the rule during calls
             if (want && policy == null) { try { register(spk); log("music on bt -> rule on"); } catch (Throwable e) { log("register fail " + e); policy = null; } }
             if (policy != null) multiFocusOnce(music);
@@ -61,7 +63,7 @@ public class AppRoute {
                 log(now - lastBt > 120000 ? "bt gone 2min -> exit" : "no music 10min -> exit");
                 System.exit(0);
             }
-            Thread.sleep(2000);
+            focusWait(music, 2000);
         }
     }
 
@@ -131,7 +133,7 @@ public class AppRoute {
                 pausedForCall = false;
                 if (!musicPlaying(onBt)) { sh("cmd media_session dispatch play"); log("call/voice mode over -> music resumed"); }
             }
-            if ((!all.isEmpty() && musicPlaying(all)) || pausedForCall) lastPlay = now;
+            if ((!all.isEmpty() && musicPlaying(all)) || pausedForCall || focusArmed) lastPlay = now;
             StringBuilder key = new StringBuilder();
             java.util.LinkedHashMap<AudioDeviceInfo, int[]> targets = new java.util.LinkedHashMap<>();
             for (String t : TARGETS) if (dev.containsKey(t) && map.containsKey(t)) {
@@ -151,8 +153,45 @@ public class AppRoute {
                 log("no listed app played 10min -> exit");
                 System.exit(0);
             }
-            Thread.sleep(2000);
+            focusWait(all, 2000);
         }
+    }
+
+    // Voice typing / assistant (e.g. Gboard's mic) takes transient focus and the music app pauses. With multi audio focus on,
+    //   Android never gives focus back to apps in its multi-focus list (they keep LOSS_TRANSIENT, see dumpsys audio), so the
+    //   music stays paused after the mic closes. Between ticks, watch the focus stack every 250 ms; if the music was playing
+    //   right before the transient holder appeared and is still paused 1 s after it is gone, press play.
+    static boolean focusArmed = false, holderSeen = false, playedBefore = false, focusErrLogged = false;
+    static void focusWait(java.util.Set<Integer> music, long ms) throws InterruptedException {
+        long end = System.currentTimeMillis() + ms;
+        do {
+            String holder = transientHolder(music);
+            if (holder != null && !holderSeen && playedBefore) { focusArmed = true; log(holder + " took transient focus -> resume music after it"); }
+            if (holder == null) {
+                if (focusArmed) {
+                    focusArmed = false; Thread.sleep(1000);
+                    if (!musicPlaying(music)) { sh("cmd media_session dispatch play"); log("transient focus over -> music resumed"); }
+                }
+                playedBefore = !music.isEmpty() && musicPlaying(music);
+            }
+            holderSeen = holder != null;
+            Thread.sleep(250);
+        } while (System.currentTimeMillis() < end);
+    }
+
+    // Package of a non-music app holding transient focus (GAIN_TRANSIENT / _MAY_DUCK / _EXCLUSIVE), or null
+    static String transientHolder(java.util.Set<Integer> music) {
+        try {
+            Object as = Class.forName("android.media.IAudioService$Stub").getMethod("asInterface", android.os.IBinder.class)
+                .invoke(null, Class.forName("android.os.ServiceManager").getMethod("getService", String.class).invoke(null, "audio"));
+            java.util.List<?> l = (java.util.List<?>) as.getClass().getMethod("getFocusStack").invoke(as);
+            for (Object f : l) {
+                int g = (Integer) f.getClass().getMethod("getGainRequest").invoke(f);
+                int uid = (Integer) f.getClass().getMethod("getClientUid").invoke(f);
+                if (g >= 2 && g <= 4 && !music.contains(uid)) return (String) f.getClass().getMethod("getPackageName").invoke(f);
+            }
+        } catch (Throwable e) { if (!focusErrLogged) { focusErrLogged = true; log("focus stack err " + e); } }
+        return null;
     }
 
     // Is a music app playing right now? (with MODIFY_AUDIO_ROUTING we can see the uid of every player)
