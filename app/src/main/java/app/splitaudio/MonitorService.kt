@@ -23,6 +23,7 @@ import rikka.shizuku.Shizuku
 class MonitorService : Service() {
     private val h = Handler(Looper.getMainLooper())
     private var lastTry = 0L
+    private var lastMix = 0L
     @Volatile private var state = ""
     private lateinit var am: AudioManager
 
@@ -34,7 +35,7 @@ class MonitorService : Service() {
         am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         startForeground(1, notif(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         am.registerAudioPlaybackCallback(object : AudioManager.AudioPlaybackCallback() {
-            override fun onPlaybackConfigChanged(c: MutableList<AudioPlaybackConfiguration>?) { h.postDelayed({ check("play") }, 1200) }
+            override fun onPlaybackConfigChanged(c: MutableList<AudioPlaybackConfiguration>?) { h.postDelayed({ check("play"); mixer() }, 1200) }
         }, h)
         am.registerAudioDeviceCallback(object : AudioDeviceCallback() {
             override fun onAudioDevicesAdded(a: Array<out AudioDeviceInfo>?) { h.postDelayed({ check("bt") }, 2500) }
@@ -84,6 +85,15 @@ class MonitorService : Service() {
             Thread.sleep(2500)
             setState(if (Route.ruleOn()) getString(R.string.s_split) else getString(R.string.s_result, r))
         }.start()
+    }
+
+    /** 每個 App 音量（0.4）：有設定但 mixer 沒在跑（例：手機重開過）→ 起來；30 秒內不重查 */
+    private fun mixer() {
+        val now = System.currentTimeMillis()
+        if (now - lastMix < 30_000 || !Mixer.hasAny(this)) return
+        lastMix = now
+        val c = applicationContext
+        Thread { Mixer.ensure(c) }.start()
     }
 
     private fun setState(s: String) {

@@ -69,4 +69,10 @@
     <string name="live_wait">等音樂播放</string>
     <string name="live_none">沒在跑</string>
     <string name="mode_custom_empty">還沒選任何 App，先照簡單模式分流。</string>
+    <string name="btn_mixer">每個 App 分開調音量</string>
+    <string name="mixer_title">每個 App 的音量</string>
+    <string name="mixer_hint">拉桿調這個 App 自己的音量；按 🔊／🔇 靜音。正在出聲的 App（▶）排最前面。100% ＝不動它。</string>
+    <string name="mixer_muted">靜音</string>
+    <string name="mixer_playing_n">正在出聲：%1$d 個</string>
+    <string name="mixer_need_shizuku">需要 Shizuku（先在主畫面授權）。</string>
 </resources>

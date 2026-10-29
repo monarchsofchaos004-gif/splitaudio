@@ -12,6 +12,8 @@
 // Exits by itself after Bluetooth has been gone 2 min, or the music app has been silent 10 min.
 //   If this process dies, the rule dies with it -> everything falls back to Bluetooth (never silence).
 // Custom mode (0.3): "AppRoute map <file>" reads per-app outputs instead (see mapMain).
+// Per-app volume (0.4): "AppRoute mixer <file>" keeps each listed app at its own volume, 0 = mute (see mixerMain);
+//   "AppRoute players" prints the uids that are playing right now (for the app's list).
 // Usage: CLASSPATH=/data/local/tmp/approute.dex app_process /system/bin AppRoute <musicUid,musicUid> <uid> [uid...]
 //        CLASSPATH=/data/local/tmp/approute.dex app_process /system/bin AppRoute map /data/local/tmp/approute.map
 //        CLASSPATH=/data/local/tmp/approute.dex app_process /system/bin AppRoute multifocus on|off|state
@@ -28,6 +30,8 @@ public class AppRoute {
     public static void main(String[] a) throws Exception {
         if (a.length > 0 && a[0].equals("multifocus")) { multiFocusCmd(a.length > 1 ? a[1] : "state"); return; }
         if (a.length > 1 && a[0].equals("map")) { mapMain(a[1]); return; }
+        if (a.length > 1 && a[0].equals("mixer")) { mixerMain(a[1]); return; }
+        if (a.length > 0 && a[0].equals("players")) { for (int u : playingUids()) System.out.println(u); return; }
         Looper.prepareMainLooper();
         java.util.HashSet<Integer> music = new java.util.HashSet<>();
         for (String m : a[0].split(",")) if (!m.isEmpty()) music.add(Integer.parseInt(m));
@@ -65,6 +69,85 @@ public class AppRoute {
             }
             focusWait(music, 2000);
         }
+    }
+
+    // Per-app volume: the file (written by approute.sh mixer from the app's choices) has lines "uid=0.35" (0 = mute).
+    //   Every second each player of a listed uid gets PlayerProxy.setVolume(v) (a system API; the shell user holds the
+    //   MODIFY_AUDIO_ROUTING it needs). An app may set its own player volume later, so values are re-sent every 5 s.
+    //   A player whose app was taken off the list goes back to 1.0. When the file is gone or empty every touched player
+    //   is set back to 1.0 and the process exits (approute.sh mixstop deletes the file).
+    static java.util.List<?> playbackConfigs() throws Exception {
+        Object as = Class.forName("android.media.IAudioService$Stub").getMethod("asInterface", android.os.IBinder.class)
+            .invoke(null, Class.forName("android.os.ServiceManager").getMethod("getService", String.class).invoke(null, "audio"));
+        return (java.util.List<?>) as.getClass().getMethod("getActivePlaybackConfigurations").invoke(as);
+    }
+
+    static java.util.TreeSet<Integer> playingUids() {
+        java.util.TreeSet<Integer> s = new java.util.TreeSet<>();
+        try {
+            for (Object c : playbackConfigs())
+                if ((Integer) c.getClass().getMethod("getPlayerState").invoke(c) == 2 /* STARTED */)
+                    s.add((Integer) c.getClass().getMethod("getClientUid").invoke(c));
+        } catch (Throwable e) { log("players err " + e); }
+        return s;
+    }
+
+    static java.util.HashMap<Integer, Float> readVol(java.io.File f) {
+        java.util.HashMap<Integer, Float> m = new java.util.HashMap<>();
+        try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.FileReader(f))) {
+            for (String l; (l = r.readLine()) != null; ) {
+                int e = l.indexOf('=');
+                if (e < 0) continue;
+                try {
+                    float v = Math.max(0f, Math.min(1f, Float.parseFloat(l.substring(e + 1).trim())));
+                    if (v < 0.995f) m.put(Integer.parseInt(l.substring(0, e).trim()), v);
+                } catch (NumberFormatException x) {}
+            }
+        } catch (Throwable e) { log("vol read fail " + e); }
+        return m;
+    }
+
+    static boolean setPlayerVolume(Object px, float v) {
+        try { px.getClass().getMethod("setVolume", float.class).invoke(px, v); return true; } catch (Throwable e) { return false; }
+    }
+
+    static void mixerMain(String path) throws Exception {
+        java.io.File f = new java.io.File(path);
+        java.util.HashMap<Integer, Float> want = new java.util.HashMap<>();
+        java.util.HashMap<Integer, Float> applied = new java.util.HashMap<>();   // player id -> volume we set
+        java.util.HashMap<Integer, Object> proxies = new java.util.HashMap<>();
+        long mtime = -1, lastFull = 0;
+        log("mixer start");
+        while (f.exists()) {
+            if (f.lastModified() != mtime) {
+                mtime = f.lastModified(); want = readVol(f); lastFull = 0;
+                log("mixer " + want);
+                if (want.isEmpty()) break;
+            }
+            long now = System.currentTimeMillis(); boolean full = now - lastFull > 5000;
+            if (full) lastFull = now;
+            java.util.HashSet<Integer> seen = new java.util.HashSet<>();
+            try {
+                for (Object c : playbackConfigs()) {
+                    Class<?> k = c.getClass();
+                    int uid = (Integer) k.getMethod("getClientUid").invoke(c);
+                    int piid = (Integer) k.getMethod("getPlayerInterfaceId").invoke(c);
+                    seen.add(piid);
+                    Float v = want.get(uid), a = applied.get(piid);
+                    if (v == null && a == null) continue;
+                    float target = v == null ? 1f : v;
+                    if (a != null && a == target && !full) continue;
+                    Object px = k.getMethod("getPlayerProxy").invoke(c);
+                    if (px == null || !setPlayerVolume(px, target)) continue;
+                    if (v == null) { applied.remove(piid); proxies.remove(piid); } else { applied.put(piid, target); proxies.put(piid, px); }
+                }
+            } catch (Throwable e) { log("mixer err " + e); }
+            applied.keySet().retainAll(seen); proxies.keySet().retainAll(seen);
+            Thread.sleep(1000);
+        }
+        for (Object px : proxies.values()) setPlayerVolume(px, 1f);   // everything back to normal before leaving
+        log("mixer exit (" + proxies.size() + " players reset)");
+        System.exit(0);
     }
 
     // Custom mode: each app picks its output. The map file (written by approute.sh startmap from the app's choices)

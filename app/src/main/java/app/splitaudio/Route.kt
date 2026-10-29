@@ -28,7 +28,7 @@ object Route {
     fun mode(): String? = ask("mode")?.let { if (it == "map") "map" else "legacy" }
 
     /** 把 assets 寫到 /data/local/tmp（先寫 .new 再改名：正在跑的 AppRoute 還拿著舊檔，不能原地覆蓋）。成功回 null。 */
-    private fun deploy(ctx: Context): String? {
+    fun deploy(ctx: Context): String? {
         for (n in listOf("approute.dex", "approute.sh")) {
             val data = ctx.assets.open(n).use { it.readBytes() }
             val f = "/data/local/tmp/$n"

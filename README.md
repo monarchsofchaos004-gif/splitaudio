@@ -58,6 +58,18 @@ Default music app = YouTube Music (plus the Morphe-patched package).
   Same mechanism as below: the app writes `/data/local/tmp/approute.pkgmap`, `approute.sh startmap` turns package names
   into uids and starts `AppRoute map`, which registers one set of RENDER mixes per output device.
 
+## 每個 App 分開調音量 / Volume for each app (0.4)
+> **只在 Xiaomi 15（HyperOS 3、Android 16）實機驗證過。** Only verified on a Xiaomi 15 (HyperOS 3, Android 16).
+
+- 主畫面「每個 App 分開調音量」：每個 App 一條拉桿＋靜音鈕，正在出聲的 App 排最前面；100% ＝不動它。跟分流各自獨立，不開分流也能用。
+  Main screen → "Volume for each app": a slider and a mute button per app; apps playing right now come first; 100% = left alone.
+  Independent of the split: works with or without it.
+- 原理：小程式（`AppRoute mixer`）以 shell 身分對那個 App 的每個播放器呼叫系統的 `PlayerProxy.setVolume`（需要 `MODIFY_AUDIO_ROUTING`，shell 有）；
+  App 自己也可能改音量，所以每 5 秒重設一次。設定全回 100% 時，它先把音量還原再結束。
+  How: a helper (`AppRoute mixer`) running as the shell user calls the system `PlayerProxy.setVolume` on each player of that app
+  (needs `MODIFY_AUDIO_ROUTING`, which the shell user has). An app may change its own volume, so the value is re-sent every 5 s.
+  When every app is back at 100% it restores the volumes and exits.
+
 ## 原理 / How it works
 ```
  SplitAudio app ──Shizuku (shell user)──► /data/local/tmp/approute.sh start

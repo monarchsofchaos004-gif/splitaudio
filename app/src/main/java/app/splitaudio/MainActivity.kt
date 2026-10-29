@@ -85,6 +85,7 @@ class MainActivity : Activity() {
         cus.addView(tvModeDesc)
         appsBtn = btn("🎛️ " + getString(R.string.btn_apps), C_INDIGO) { startActivity(Intent(this, AppsActivity::class.java)) }
         cus.addView(appsBtn)
+        cus.addView(btn("🔉 " + getString(R.string.btn_mixer), C_PINK) { startActivity(Intent(this, MixerActivity::class.java)) })
         cus.addView(divider())
         mfSw = Switch(this).apply {
             text = "🎬 " + getString(R.string.mf_title); textSize = 15f; setTextColor(C_TEXT); setTypeface(typeface, Typeface.BOLD)

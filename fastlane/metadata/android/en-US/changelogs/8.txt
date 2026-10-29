@@ -1,0 +1,2 @@
+New: volume for each app. Main screen → "Volume for each app": a slider per app and a mute button; apps playing right now are listed first. Works on its own, with or without the split.
+Needs Shizuku, like the rest of the app.

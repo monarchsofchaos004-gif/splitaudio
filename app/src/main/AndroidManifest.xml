@@ -20,6 +20,7 @@
             </intent-filter>
         </activity>
         <activity android:name=".AppsActivity" android:exported="false" android:label="@string/apps_title"/>
+        <activity android:name=".MixerActivity" android:exported="false" android:label="@string/mixer_title"/>
         <service android:name=".MonitorService" android:exported="false" android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="per-app audio routing monitor"/>
         </service>

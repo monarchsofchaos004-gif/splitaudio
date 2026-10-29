@@ -69,4 +69,10 @@
     <string name="live_wait">Waiting for music</string>
     <string name="live_none">Not running</string>
     <string name="mode_custom_empty">No app chosen yet, so it works like Simple mode for now.</string>
+    <string name="btn_mixer">Volume for each app</string>
+    <string name="mixer_title">Volume for each app</string>
+    <string name="mixer_hint">Drag to set an app\'s own volume; 🔊 / 🔇 mutes it. Apps playing now (▶) are listed first. 100% = left alone.</string>
+    <string name="mixer_muted">muted</string>
+    <string name="mixer_playing_n">Playing now: %1$d</string>
+    <string name="mixer_need_shizuku">Needs Shizuku (grant it on the main screen first).</string>
 </resources>
