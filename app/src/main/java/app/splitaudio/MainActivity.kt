@@ -180,7 +180,8 @@ class MainActivity : Activity() {
             val be = Backends.current()
             val shzAlive = ShizukuBackend.alive(); val shzGranted = ShizukuBackend.granted()
             val conn = if (be == null) getString(R.string.v_none) else be.name + " " + getString(if (be.alive()) R.string.v_connected else R.string.v_disconnected)
-            mf = if (be != null) Route.multiFocusState() else null
+            val up = be != null && be.alive()   // 連著才去問（內建 ADB 已配對但斷線時，不要每次重新整理都去試著連線）
+            mf = if (up) Route.multiFocusState() else null
             val custom = Outputs.customFlag(this); val nApps = Outputs.all(this).size
             val proLeft = if (Dist.proAlways || Pro.licensed(this)) -1 else Pro.trialDaysLeft(this)
             val upd = setup?.poll()
@@ -221,7 +222,7 @@ class MainActivity : Activity() {
                 tvPro.visibility = if (proLeft < 0) View.GONE else View.VISIBLE
                 if (proLeft >= 0) tvPro.text = if (proLeft > 0) getString(R.string.pro_trial_left, proLeft) else getString(R.string.pro_trial_over)
 
-                mfBusy = true; mfSw.isChecked = mf == "on"; mfSw.isEnabled = be != null; mfBusy = false
+                mfBusy = true; mfSw.isChecked = mf == "on"; mfSw.isEnabled = up; mfBusy = false
                 tvMf.text = when (mf) { "on" -> getString(R.string.mf_desc); "off" -> getString(R.string.mf_off_auto); "off_user" -> getString(R.string.mf_off_user); else -> getString(R.string.mf_desc) }
             }
         }.start()

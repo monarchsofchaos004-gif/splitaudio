@@ -19,7 +19,10 @@ object Dist {
     @Suppress("UNUSED_PARAMETER")
     fun setupSection(a: MainActivity, parent: LinearLayout): SetupSection? = null
 
+    @Suppress("UNUSED_PARAMETER")
     fun onServiceCreate(s: MonitorService) {}
+
+    @Suppress("UNUSED_PARAMETER")
     fun onServiceDestroy(s: MonitorService) {}
 
     /** 沒有可用後端時，通知列要顯示什麼 */

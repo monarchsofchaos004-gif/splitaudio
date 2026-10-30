@@ -8,7 +8,8 @@
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
     <!-- Granted to ourselves once, through the paired ADB connection (pm grant); used only to switch Wireless debugging back on after a reboot -->
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions"/>
-    <!-- libadb-android's manifest has no targetSdk, so the manifest merger can add legacy storage/phone-state permissions; we never use them -->
+    <!-- Guards: libadb-android's manifest has no targetSdk, so the manifest merger used to add legacy storage/phone-state permissions (not with minSdk 31,
+         hence the "no other declaration present" merger warnings). We never use them; keep this so a library update cannot bring them back. -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove"/>
     <uses-permission android:name="android.permission.READ_PHONE_STATE" tools:node="remove"/>
