@@ -65,6 +65,11 @@
     <string name="mode_custom_d">每個 App 自己選要從哪裡出聲。</string>
     <string name="mf_title">開影片不打斷音樂</string>
     <string name="mf_desc">讓兩個 App 可以同時出聲。</string>
+    <string name="mic_keep_title">按麥克風時不暫停音樂</string>
+    <string name="mic_keep_on_d">語音輸入或語音助理搶走聲音時，立刻把音樂補回來，只會頓約半秒。手機麥克風會收到喇叭放出來的音樂聲。</string>
+    <string name="mic_keep_off_d">已關：等麥克風用完才把音樂補播。</string>
+    <string name="mic_keep_needs_mf">要先開上面的「開影片不打斷音樂」才有用；沒開的時候，等麥克風用完才把音樂補播。</string>
+    <string name="mic_keep_result">按麥克風時不暫停音樂 → %1$s</string>
     <string name="live_on">分流中</string>
     <string name="live_wait">等音樂播放</string>
     <string name="live_none">沒在跑</string>

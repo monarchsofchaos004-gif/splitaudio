@@ -11,7 +11,7 @@ class RouteTest {
     @Test fun cmd_putsTheAppUidAndTokenInFrontOfEveryScriptCall() {
         assertEquals("SPLITAUDIO_UID=10234 SPLITAUDIO_TOKEN=$tok sh /data/local/tmp/approute.sh start", Route.cmd(10234, tok, "start"))
         assertEquals("SPLITAUDIO_UID=10234 SPLITAUDIO_TOKEN=$tok sh /data/local/tmp/approute.sh multifocus on", Route.cmd(10234, tok, "multifocus on"))
-        for (sub in listOf("start", "startmap", "stop", "mixer", "mixstop", "multifocus on", "multifocus off", "players"))
+        for (sub in listOf("start", "startmap", "stop", "mixer", "mixstop", "multifocus on", "multifocus off", "mickeep on", "mickeep off", "players"))
             assertTrue(sub, Route.cmd(1010123, tok, sub).startsWith("SPLITAUDIO_UID=1010123 SPLITAUDIO_TOKEN=$tok sh /data/local/tmp/approute.sh $sub"))
     }
 
@@ -102,6 +102,19 @@ class RouteTest {
         assertFalse(Route.sameVersion("abc124", "abc123"))
         assertFalse(Route.sameVersion("", "abc123"))      // 手機上沒有 approute.ver（舊版／被清掉）→ 重新部署
         assertFalse(Route.sameVersion(null, "abc123"))
+    }
+
+    @Test fun micKeepOf_readsOnOrOffFromTheLastLine() {
+        assertEquals("on", Route.micKeepOf(0, "on\n"))
+        assertEquals("off", Route.micKeepOf(0, "off\n"))
+        assertEquals("off", Route.micKeepOf(0, "some warning\noff\n"))   // 前面有雜訊也只看最後一行
+        assertEquals("on", Route.micKeepOf(0, " on \r\n"))
+        assertNull(Route.micKeepOf(-2, "no_backend"))                     // 後端不能用
+        assertNull(Route.micKeepOf(-1, "on"))                             // 逾時：輸出不可信
+        assertNull(Route.micKeepOf(-3, "IOException:boom"))
+        assertNull(Route.micKeepOf(0, ""))
+        assertNull(Route.micKeepOf(0, "mickeep=on"))                      // 這個只讀旗標檔，不是 approute.sh 的回答格式
+        assertNull(Route.micKeepOf(0, "ON"))
     }
 
     @Test fun hasPid_scriptOutput() {

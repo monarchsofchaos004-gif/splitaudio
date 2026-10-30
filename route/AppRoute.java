@@ -8,7 +8,8 @@
 //   media to the earpiece. Multi audio focus keeps the music playing there, so the music is paused for the duration
 //   and resumed when the mode is back to NORMAL (only if this process paused it).
 // Voice typing / assistant mic (transient focus): the music app pauses itself; with multi audio focus Android never hands
-//   focus back, so the helper presses play once the transient holder is gone (focusWait, 0.3.1).
+//   focus back, so the helper presses play once the transient holder is gone (focusWait, 0.3.1). 0.5: unless the user turned
+//   "mic doesn't pause the music" off (flag file approute.nomickeep), it presses play 0.3 s after the holder showed up instead.
 // Exits by itself after Bluetooth has been gone 2 min, or the music app has been silent 10 min.
 //   If this process dies, the rule dies with it -> everything falls back to Bluetooth (never silence).
 // Custom mode (0.3): "AppRoute map <file>" reads per-app outputs instead (see mapMain).
@@ -254,12 +255,45 @@ public class AppRoute {
     //   Android never gives focus back to apps in its multi-focus list (they keep LOSS_TRANSIENT, see dumpsys audio), so the
     //   music stays paused after the mic closes. Between ticks, watch the focus stack every 250 ms; if the music was playing
     //   right before the transient holder appeared and is still paused 1 s after it is gone, press play.
+    // "Mic doesn't pause the music" (0.5, on unless the flag file approute.nomickeep exists; the file is looked at each time, so
+    //   switching it needs no restart): with multi audio focus on, a music app asking for focus again does not take the focus away from
+    //   the mic, so both can run at once. Then play is pressed already MIC_KEEP_WAIT_MS after the holder showed up (time for the music app
+    //   to finish pausing) and the music only stalls for about half a second; waiting for the holder to go stays as the safety net.
+    //   Not used (= the old behaviour) while the audio mode says call / voice chat (the call rule in main() pauses the music on
+    //   purpose) and while multi audio focus is off (there the music app asking again would take the focus away from the mic).
     static boolean focusArmed = false, holderSeen = false, playedBefore = false, focusErrLogged = false;
+    static final String NO_MICKEEP = "/data/local/tmp/approute.nomickeep";
+    static final long MIC_KEEP_WAIT_MS = 300;
+    /** The flag file is the switch: it exists = the user turned "mic doesn't pause the music" off (approute.sh mickeep off) */
+    static boolean micKeepOn(java.io.File noMicKeepFile) { return !noMicKeepFile.exists(); }
+    static boolean micKeepOn() { return micKeepOn(new java.io.File(NO_MICKEEP)); }
+    /** What to do about a transient-focus holder: 0 = nothing, 1 = only arm (press play once the holder is gone: the old behaviour),
+     *  2 = press play at once and arm as well. newHolder = a holder is there that was not there on the last tick; playedBefore = the
+     *  music was playing right before it showed up; keepOn = "mic doesn't pause the music" is on and usable. */
+    static int micAction(boolean newHolder, boolean playedBefore, boolean keepOn) {
+        if (!newHolder || !playedBefore) return 0;
+        return keepOn ? 2 : 1;
+    }
+    static boolean multiFocusOn() { return "1".equals(sh("settings get system multi_audio_focus_enabled")); }
+
+    /** micAction 2: give the music app MIC_KEEP_WAIT_MS to finish pausing for the focus loss, then press play if it is not playing */
+    static void micKeepPlaying(java.util.Set<Integer> music, String holder) throws InterruptedException {
+        Thread.sleep(MIC_KEEP_WAIT_MS);
+        if (inCall()) log(holder + " took transient focus in call/voice mode -> left to the call rule");
+        else if (!musicPlaying(music)) { sh("cmd media_session dispatch play"); log(holder + " took transient focus -> music kept playing"); }
+        else log(holder + " took transient focus -> music still playing");
+    }
+
     static void focusWait(java.util.Set<Integer> music, long ms) throws InterruptedException {
         long end = System.currentTimeMillis() + ms;
         do {
             String holder = transientHolder(music);
-            if (holder != null && !holderSeen && playedBefore) { focusArmed = true; log(holder + " took transient focus -> resume music after it"); }
+            boolean newHolder = holder != null && !holderSeen;
+            boolean keep = newHolder && playedBefore && micKeepOn() && multiFocusOn();   // the file / the setting are only looked at when it matters
+            int act = micAction(newHolder, playedBefore, keep);
+            if (act != 0) focusArmed = true;
+            if (act == 1) log(holder + " took transient focus -> resume music after it");
+            if (act == 2) micKeepPlaying(music, holder);
             if (holder == null) {
                 if (focusArmed) {
                     focusArmed = false; Thread.sleep(1000);

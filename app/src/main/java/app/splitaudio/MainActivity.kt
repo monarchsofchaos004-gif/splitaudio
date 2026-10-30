@@ -22,7 +22,7 @@ import android.widget.TextView
 /** 狀態＋設定頁（字串在 res/values*，英文預設、繁中 values-zh-rTW）。
  *  上：（Play 版）一次性設定＝內建 ADB 引導；狀態卡（分流中／等音樂／沒在跑，顏色跟著變）＋啟動／停止；
  *  ① 必要設定（fdroid 版）：Shizuku、音量鍵（無障礙）；
- *  ② 客製化：簡單／自訂模式、（簡單模式）選音樂 App、（自訂模式）每個 App 選輸出、每個 App 的音量、開影片不打斷音樂；
+ *  ② 客製化：簡單／自訂模式、（簡單模式）選音樂 App、（自訂模式）每個 App 選輸出、每個 App 的音量、開影片不打斷音樂、按麥克風時不暫停音樂；
  *  第一次分流時如果用戶還沒決定「開影片會不會暫停音樂」，上面多一張決定卡（開／不要，見 [Mf]）。
  *  兩個版本的差異都收在 [Dist]（後端清單、Pro 是否一律開放、有沒有音量鍵、設定區塊）。 */
 class MainActivity : Activity() {
@@ -43,11 +43,15 @@ class MainActivity : Activity() {
     private lateinit var mfCard: LinearLayout
     private lateinit var mfSw: Switch
     private lateinit var tvMf: TextView
+    private lateinit var mkSw: Switch
+    private lateinit var tvMk: TextView
     private lateinit var tvModeDesc: TextView
     private lateinit var tvPro: TextView
     private var setup: SetupSection? = null
     @Volatile private var mf: String? = null
     private var mfBusy = false
+    @Volatile private var mk: String? = null   // 按麥克風時不暫停音樂："on"／"off"／null（讀不到，當成預設的開）
+    private var mkBusy = false
     private val ui = Handler(Looper.getMainLooper())
     private var ticking = false
     private val tickRun = object : Runnable {
@@ -141,6 +145,18 @@ class MainActivity : Activity() {
         cusCard.addView(mfSw)
         tvMf = text("", 13f, C_TEXT_2).apply { setPadding(0, 0, 0, dp(4)) }
         cusCard.addView(tvMf)
+        // 按麥克風（語音輸入／助理）時不暫停音樂：路由程式看到別的 App 搶走聲音就立刻替音樂按播放。預設開，要先開上面的多重焦點才有用
+        mkSw = Switch(this).apply {
+            text = "🎤 " + getString(R.string.mic_keep_title); textSize = 15f; setTextColor(C_TEXT); setTypeface(typeface, Typeface.BOLD)
+            setPadding(0, dp(10), 0, dp(2))
+            setOnCheckedChangeListener { _, on ->
+                if (mkBusy || on == (mk != "off")) return@setOnCheckedChangeListener
+                applyMicKeep(on)
+            }
+        }
+        cusCard.addView(mkSw)
+        tvMk = text("", 13f, C_TEXT_2).apply { setPadding(0, 0, 0, dp(4)) }
+        cusCard.addView(tvMk)
         root.addView(cusCard)
 
         setup?.addFooter(root)
@@ -198,6 +214,16 @@ class MainActivity : Activity() {
         }.start()
     }
 
+    /** 開／關「按麥克風時不暫停音樂」（背景執行緒）：路由程式每次要用都查旗標檔，所以馬上生效，不用重啟路由 */
+    private fun applyMicKeep(on: Boolean) {
+        val c = applicationContext
+        Thread {
+            val r = Route.setMicKeep(c, on)
+            Route.lastStart = getString(R.string.mic_keep_result, r)
+            refreshSoon()
+        }.start()
+    }
+
     internal fun refreshSoon() {
         Thread {
             Thread.sleep(600)
@@ -208,6 +234,7 @@ class MainActivity : Activity() {
             val conn = if (be == null) getString(R.string.v_none) else be.name + " " + getString(if (be.alive()) R.string.v_connected else R.string.v_disconnected)
             val up = be != null && be.alive()   // 連著才去問（內建 ADB 已配對但斷線時，不要每次重新整理都去試著連線）
             mf = if (up) Route.multiFocusState() else null
+            mk = if (up) Route.micKeepState() else null
             val mfNow = Mf.reconcile(Mf.decision(this), mf)   // 系統設定早就開著（舊版開的）或舊版的關閉鈕按過 → 不用再問
             if (mfNow != Mf.decision(this)) Mf.setDecision(this, mfNow)
             val nMusic = Music.set(this).count { packageManager.getLaunchIntentForPackage(it) != null }
@@ -256,6 +283,12 @@ class MainActivity : Activity() {
                 mfBusy = true; mfSw.isChecked = mf == "on"; mfSw.isEnabled = up; mfBusy = false
                 mfCard.visibility = if (ready && up && Mf.needsAsk(mfNow, mf)) View.VISIBLE else View.GONE
                 tvMf.text = when (mf) { "on" -> getString(R.string.mf_desc); "off" -> getString(R.string.mf_off_auto); "off_user" -> getString(R.string.mf_off_user); else -> getString(R.string.mf_desc) }
+                mkBusy = true; mkSw.isChecked = mk != "off"; mkSw.isEnabled = up; mkBusy = false
+                tvMk.text = getString(when {
+                    mk == "off" -> R.string.mic_keep_off_d
+                    mf == "off" || mf == "off_user" -> R.string.mic_keep_needs_mf   // 多重焦點沒開：打開這個也不會生效，說清楚
+                    else -> R.string.mic_keep_on_d
+                })
             }
         }.start()
     }

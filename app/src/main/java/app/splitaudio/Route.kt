@@ -187,4 +187,24 @@ object Route {
         deploy(ctx)?.let { return it }
         return Backends.run(sh(ctx, "multifocus " + (if (on) "on" else "off")), 30).second.trim().lines().lastOrNull().orEmpty()
     }
+
+    /** 「按麥克風時不暫停音樂」（語音輸入／助理搶走聲音時，路由程式立刻替音樂按播放）：旗標檔 approute.nomickeep 在＝關，不在＝開（預設開）。
+     *  旗標檔 App 讀不到，經 [Backends] 讀；路由程式每次要用都重查這個檔，所以切換不用重啟路由。回 "on"／"off"／null（讀不到） */
+    fun micKeepState(): String? {
+        val r = Backends.run("[ -e $D/approute.nomickeep ] && echo off || echo on", 10)
+        return micKeepOf(r.first, r.second)
+    }
+
+    /** 純邏輯（可單元測試）：[micKeepState] 那條指令的結果（rc＝後端回的代碼，負的＝後端不能用／逾時／例外）→ "on"／"off"／null。看輸出的最後一行。 */
+    fun micKeepOf(rc: Int, out: String): String? {
+        if (rc < 0) return null
+        val last = out.trim().lines().lastOrNull()?.trim()
+        return if (last == "on" || last == "off") last else null
+    }
+
+    /** 開／關「按麥克風時不暫停音樂」（要在背景執行緒叫）。回 approute.sh 印的最後一行（"mickeep=on"／"mickeep=off"），部署失敗回失敗原因。 */
+    @Synchronized fun setMicKeep(ctx: Context, on: Boolean): String {
+        deploy(ctx)?.let { return it }
+        return Backends.run(sh(ctx, "mickeep " + (if (on) "on" else "off")), 30).second.trim().lines().lastOrNull().orEmpty()
+    }
 }

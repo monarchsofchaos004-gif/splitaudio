@@ -53,6 +53,15 @@ Samsung-only). SplitAudio keeps **the music app on Bluetooth and sends every oth
   automatically. It is a system setting, so it survives reboot; calls and alarms still pause everything. You can change your mind
   any time with the "videos don't pause the music" switch on the main screen; "no thanks" means it is never asked or switched on again.
   **To restore the default before uninstalling, switch it off first.**
+- **按麥克風時不暫停音樂**（0.5，預設開）：用語音輸入（例如 Gboard 的麥克風）或叫語音助理時，Android 會讓音樂 App 自己暫停。
+  開著這個功能時，小程式一看到別的 App 搶走聲音，約 0.3 秒後就替音樂按播放，音樂只頓約半秒，麥克風照常能用。
+  只在「開影片不打斷音樂」（多重焦點）開著時有效——多重焦點下，音樂 App 重新要聲音不會把麥克風的聲音搶走，兩邊才能同時；通話／語音對講時照舊先暫停音樂。
+  **副作用：手機麥克風會收到喇叭放出來的音樂聲。** 主畫面的「按麥克風時不暫停音樂」開關可以關掉（關＝等麥克風用完才補播，跟以前一樣）。
+  **Pressing the mic doesn't pause the music** (0.5, on by default): voice typing (e.g. Gboard's mic) or an assistant makes the music app pause itself.
+  With this on, the helper sees another app take the sound and presses play about 0.3 s later, so the music only stalls for about half a second and the mic works as usual.
+  It only works while "videos don't pause the music" (multi audio focus) is on — with multi audio focus a music app asking for the sound again does not take it away from the mic,
+  so both can run at once; during calls / voice chats the music is still paused as before. **Side effect: the phone's microphone can pick up the music playing from the speaker.**
+  Switch it off with the "mic doesn't pause the music" switch on the main screen (off = the music is resumed after the mic is done, as before).
 - **故障安全**：路由小程式一旦結束，規則跟著消失＝全部回到藍牙，不會變成沒聲音。
   **Fail-safe**: if the helper process dies, its rule dies with it — audio falls back to Bluetooth, never to silence.
 
@@ -147,6 +156,11 @@ The ticked apps stay on Bluetooth, everything else plays on the speaker. The def
    Connect Bluetooth, play YouTube Music → the notification shows "SplitAudio：分流中" (routing on). Another music app? Tick it under "Choose music apps".
 
 介面目前是繁體中文；歡迎英文翻譯 PR。The UI is Traditional Chinese for now; translation PRs welcome.
+
+## 疑難排解 / Troubleshooting
+- **音量鍵沒反應，主畫面「音量鍵」那列變回橘色的「建議開」（未開）**：到系統「設定 → 無障礙」把 SplitAudio 重新打開。HyperOS 在 App 被強制停止（例如被清理記憶體的功能）後，會把它的無障礙服務關掉，要自己再開一次。
+  **The volume keys do nothing and the "Volume keys" row on the main screen is orange again ("recommended" / 未開)**: open the system Accessibility settings and switch SplitAudio on again.
+  HyperOS turns an app's accessibility service off after the app has been force-stopped (for example by a memory cleaner), so it has to be switched on again by hand.
 
 ## 自己編譯 / Build
 JDK 17、Android SDK（`platforms;android-36`、任一版 `build-tools`，例如 `36.0.0`）、Gradle 8.9。JDK 17, Android SDK (`platforms;android-36` and any `build-tools`, e.g. `36.0.0`), Gradle 8.9:

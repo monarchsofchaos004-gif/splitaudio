@@ -6,6 +6,7 @@ Features
 - Music app on Bluetooth, everything else on the phone speaker
 - Volume keys: in a speaker-routed app they change the phone speaker volume; in the music app or on the home screen they change Bluetooth as usual
 - A video in another app no longer pauses the music (uses Android's built-in "multi audio focus" setting; the app asks you before it switches it on, and you can switch it off again)
+- Voice typing or an assistant no longer keeps the music paused: when another app takes the sound for the microphone, the music is started again right away (a pause of about half a second; needs the video setting above; the phone's microphone can pick up the music from the speaker; you can switch it off)
 - Fail-safe: if the helper process dies, its routing rule dies with it and audio falls back to Bluetooth, never to silence
 - Choose your music apps in the app (several are fine); the default is YouTube Music (and the Morphe-patched package)
 

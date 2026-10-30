@@ -279,6 +279,37 @@ public class RouteLogicTest {
         assertFalse(AppRoute.mfShouldEnable(true, true, true));
     }
 
+    // ---- voice typing / assistant: "mic doesn't pause the music" ----
+    @Test public void micAction_truthTable() {
+        // (newHolder, playedBefore, keepOn) -> 0 = nothing, 1 = only arm (press play once the holder is gone), 2 = press play at once and arm
+        assertEquals(0, AppRoute.micAction(false, false, false));
+        assertEquals(0, AppRoute.micAction(false, false, true));
+        assertEquals(0, AppRoute.micAction(false, true, false));    // the holder was already there on the last tick: never twice for one holder
+        assertEquals(0, AppRoute.micAction(false, true, true));
+        assertEquals(0, AppRoute.micAction(true, false, false));    // the music was not playing before it showed up: nothing to bring back
+        assertEquals(0, AppRoute.micAction(true, false, true));
+        assertEquals(1, AppRoute.micAction(true, true, false));     // feature off (or multi audio focus off): the old behaviour
+        assertEquals(2, AppRoute.micAction(true, true, true));
+    }
+
+    @Test public void micKeepOn_aFlagFileMeansOff() throws Exception {
+        File f = File.createTempFile("approute", ".nomickeep");
+        f.deleteOnExit();
+        assertFalse(AppRoute.micKeepOn(f));                          // file there = the user turned it off
+        assertTrue(f.delete());
+        assertTrue(AppRoute.micKeepOn(f));                           // no file = on (the default)
+        assertTrue(AppRoute.micKeepOn(new File("/nonexistent/approute.nomickeep")));
+    }
+
+    @Test public void micKeepFlag_isTheFileApprouteShWrites() throws Exception {
+        assertEquals("/data/local/tmp/approute.nomickeep", AppRoute.NO_MICKEEP);
+        File sh = null;
+        for (String p : new String[] {"src/main/assets/approute.sh", "app/src/main/assets/approute.sh"}) if (new File(p).exists()) { sh = new File(p); break; }
+        assertNotNull("approute.sh not found", sh);
+        String text = new String(Files.readAllBytes(sh.toPath()), StandardCharsets.UTF_8);
+        assertTrue(text.contains("D=/data/local/tmp;") && text.contains("$D/approute.nomickeep"));   // same directory, same file name as the router looks at
+    }
+
     // ---- files written by the app (through approute.sh) ----
     private static File temp(String text) throws Exception {
         File f = File.createTempFile("approute", ".txt");

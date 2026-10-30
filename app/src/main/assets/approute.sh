@@ -1,6 +1,6 @@
 #!/system/bin/sh
 # Start/stop AppRoute on the phone (runs as the shell user, e.g. via Shizuku or adb).
-# Usage: sh /data/local/tmp/approute.sh start|startmap|stop|status|multifocus on|off|state|mixer|mixstop|players|ask <command>
+# Usage: sh /data/local/tmp/approute.sh start|startmap|stop|status|multifocus on|off|state|mickeep on|off|state|mixer|mixstop|players|ask <command>
 #   startmap = Custom mode: $D/approute.pkgmap (written by the app, lines "speaker|bt|wired:pkg,pkg") -> uids -> AppRoute map
 #   ask      = send one control command to the running router (state | mode | vol up|down <package>) and print its answer
 # The app puts its own uid and its control token in the environment (SPLITAUDIO_UID=<uid> SPLITAUDIO_TOKEN=<token> sh approute.sh ...):
@@ -9,6 +9,7 @@
 #   $D/approute.token (mode 0600, owned by the shell user, so no app can read it) for "ask". The per-app volume process (mixer) has no
 #   control port, so it only inherits the environment.
 D=/data/local/tmp; LOG=$D/approute.log
+umask 022   # files made here (approute.log, flag files) are 0644, not world-writable; the token file below sets its own 077
 # Music apps: audio from these stays on Bluetooth; routing is active only while one of them plays.
 #   The app writes the user's choice to $D/approute.music (one package name per line); no file, or nothing valid in it = these two.
 DEF_MUSIC="app.morphe.android.apps.youtube.music com.google.android.apps.youtube.music"
@@ -83,4 +84,12 @@ case "$1" in
   # "A video doesn't pause the music" (Android multi audio focus); see AppRoute.java.
   #   on = the user agreed (writes approute.mf_ok, removes approute.nomf), off = declined (the other way round); neither file = not decided yet
   multifocus) CLASSPATH=$D/approute.dex app_process /system/bin AppRoute multifocus "${2:-state}" 2>&1 | tee -a $LOG | tail -1 ;;
+  # "Pressing the mic doesn't pause the music" (voice typing / an assistant; see focusWait in AppRoute.java). On is the default = no flag file.
+  #   off = $D/approute.nomickeep exists. The router looks at that file each time it needs it, so no restart. Prints the state: mickeep=on|off
+  mickeep)
+    case "$2" in
+      on) rm -f $D/approute.nomickeep ;;
+      off) : > $D/approute.nomickeep; chmod 644 $D/approute.nomickeep ;;
+    esac
+    [ -e $D/approute.nomickeep ] && echo "mickeep=off" || echo "mickeep=on" ;;
 esac

@@ -65,6 +65,11 @@
     <string name="mode_custom_d">You choose the output for each app.</string>
     <string name="mf_title">Videos don\'t pause the music</string>
     <string name="mf_desc">Lets two apps play at the same time.</string>
+    <string name="mic_keep_title">Pressing the mic doesn\'t pause the music</string>
+    <string name="mic_keep_on_d">When voice typing or an assistant takes over the sound, the music is started again right away, so it stops for only about half a second. The phone\'s microphone may pick up the music from the speaker.</string>
+    <string name="mic_keep_off_d">Off: the music stays paused while the microphone is in use and starts again when it is done.</string>
+    <string name="mic_keep_needs_mf">Needs “Videos don\'t pause the music” above to be on. Until then the music starts again after the microphone is done.</string>
+    <string name="mic_keep_result">Mic doesn\'t pause the music → %1$s</string>
     <string name="live_on">Split active</string>
     <string name="live_wait">Waiting for music</string>
     <string name="live_none">Not running</string>
