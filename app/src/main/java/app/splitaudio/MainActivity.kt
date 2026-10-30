@@ -22,7 +22,8 @@ import android.widget.TextView
 /** 狀態＋設定頁（字串在 res/values*，英文預設、繁中 values-zh-rTW）。
  *  上：（Play 版）一次性設定＝內建 ADB 引導；狀態卡（分流中／等音樂／沒在跑，顏色跟著變）＋啟動／停止；
  *  ① 必要設定（fdroid 版）：Shizuku、音量鍵（無障礙）；
- *  ② 客製化：簡單／自訂模式、每個 App 選輸出、每個 App 的音量、開影片不打斷音樂。
+ *  ② 客製化：簡單／自訂模式、（簡單模式）選音樂 App、（自訂模式）每個 App 選輸出、每個 App 的音量、開影片不打斷音樂；
+ *  第一次分流時如果用戶還沒決定「開影片會不會暫停音樂」，上面多一張決定卡（開／不要，見 [Mf]）。
  *  兩個版本的差異都收在 [Dist]（後端清單、Pro 是否一律開放、有沒有音量鍵、設定區塊）。 */
 class MainActivity : Activity() {
     private lateinit var liveCard: LinearLayout
@@ -38,6 +39,8 @@ class MainActivity : Activity() {
     private lateinit var segSimple: Button
     private lateinit var segCustom: Button
     private lateinit var appsBtn: Button
+    private lateinit var musicBtn: Button
+    private lateinit var mfCard: LinearLayout
     private lateinit var mfSw: Switch
     private lateinit var tvMf: TextView
     private lateinit var tvModeDesc: TextView
@@ -84,6 +87,16 @@ class MainActivity : Activity() {
         liveCard.addView(tvBackend)
         root.addView(liveCard)
 
+        // 「開影片會不會暫停音樂？」第一次先問：用戶沒決定過、系統設定又是關的才顯示（決定後卡片消失，下面的開關還能再改）
+        mfCard = card(Color.WHITE).apply {
+            visibility = View.GONE
+            addView(section("🎬 " + getString(R.string.mf_ask_title), C_ORANGE))
+            addView(text(getString(R.string.mf_ask_desc), 13f, C_TEXT_2).apply { setPadding(0, 0, 0, dp(6)) })
+            addView(btn(getString(R.string.mf_ask_on), C_GREEN) { applyMf(true) })
+            addView(btn(getString(R.string.mf_ask_off), C_GREY) { applyMf(false) })
+        }
+        root.addView(mfCard)
+
         // ① 必要設定：Shizuku（fdroid 版）、音量鍵（有 VolKeyService 的版本）
         if (setup == null || Dist.hasVolKey) {
             val req = card(Color.WHITE)
@@ -109,6 +122,8 @@ class MainActivity : Activity() {
         cusCard.addView(LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; addView(segSimple); addView(segCustom) })
         tvModeDesc = text("", 13f, C_TEXT_2).apply { setPadding(dp(4), 0, dp(4), dp(4)) }
         cusCard.addView(tvModeDesc)
+        musicBtn = btn("🎵 " + getString(R.string.btn_music, 0), C_TEAL) { startActivity(Intent(this, MusicActivity::class.java)) }
+        cusCard.addView(musicBtn)
         appsBtn = btn("🎛️ " + getString(R.string.btn_apps), C_INDIGO) { if (requirePro()) startActivity(Intent(this, AppsActivity::class.java)) }
         cusCard.addView(appsBtn)
         cusCard.addView(btn("🔉 " + getString(R.string.btn_mixer), C_PINK) { if (requirePro()) startActivity(Intent(this, MixerActivity::class.java)) })
@@ -120,7 +135,7 @@ class MainActivity : Activity() {
             setPadding(0, dp(6), 0, dp(2))
             setOnCheckedChangeListener { _, on ->
                 if (mfBusy || on == (mf == "on")) return@setOnCheckedChangeListener
-                Thread { Route.lastStart = getString(R.string.mf_result, Route.setMultiFocus(this@MainActivity, on)); refreshSoon() }.start()
+                applyMf(on)
             }
         }
         cusCard.addView(mfSw)
@@ -172,6 +187,17 @@ class MainActivity : Activity() {
         return false
     }
 
+    /** 開／關「開影片不打斷音樂」（背景執行緒）：成功就把用戶的決定記下來——開＝同意（之後分流會自動打開）、關＝不要（不會再自動打開） */
+    private fun applyMf(on: Boolean) {
+        val c = applicationContext
+        Thread {
+            val r = Route.setMultiFocus(c, on)
+            Route.lastStart = getString(R.string.mf_result, r)
+            if (r.startsWith("multifocus=")) Mf.setDecision(c, Mf.decisionFor(on))
+            refreshSoon()
+        }.start()
+    }
+
     internal fun refreshSoon() {
         Thread {
             Thread.sleep(600)
@@ -182,6 +208,9 @@ class MainActivity : Activity() {
             val conn = if (be == null) getString(R.string.v_none) else be.name + " " + getString(if (be.alive()) R.string.v_connected else R.string.v_disconnected)
             val up = be != null && be.alive()   // 連著才去問（內建 ADB 已配對但斷線時，不要每次重新整理都去試著連線）
             mf = if (up) Route.multiFocusState() else null
+            val mfNow = Mf.reconcile(Mf.decision(this), mf)   // 系統設定早就開著（舊版開的）或舊版的關閉鈕按過 → 不用再問
+            if (mfNow != Mf.decision(this)) Mf.setDecision(this, mfNow)
+            val nMusic = Music.set(this).count { packageManager.getLaunchIntentForPackage(it) != null }
             val custom = Outputs.customFlag(this); val nApps = Outputs.all(this).size
             val proLeft = if (Dist.proAlways || Pro.licensed(this)) -1 else Pro.trialDaysLeft(this)
             val upd = setup?.poll()
@@ -219,10 +248,13 @@ class MainActivity : Activity() {
                 segPaint(segSimple, !custom, C_TEAL); segPaint(segCustom, custom, C_PURPLE)
                 tvModeDesc.text = getString(if (custom && nApps == 0) R.string.mode_custom_empty else if (custom) R.string.mode_custom_d else R.string.mode_simple_d)
                 appsBtn.visibility = if (custom) View.VISIBLE else View.GONE
+                musicBtn.visibility = if (custom && nApps > 0) View.GONE else View.VISIBLE   // 自訂模式（真的有設定 App）不用音樂 App 清單
+                musicBtn.text = "🎵 " + getString(R.string.btn_music, nMusic)
                 tvPro.visibility = if (proLeft < 0) View.GONE else View.VISIBLE
                 if (proLeft >= 0) tvPro.text = if (proLeft > 0) getString(R.string.pro_trial_left, proLeft) else getString(R.string.pro_trial_over)
 
                 mfBusy = true; mfSw.isChecked = mf == "on"; mfSw.isEnabled = up; mfBusy = false
+                mfCard.visibility = if (ready && up && Mf.needsAsk(mfNow, mf)) View.VISIBLE else View.GONE
                 tvMf.text = when (mf) { "on" -> getString(R.string.mf_desc); "off" -> getString(R.string.mf_off_auto); "off_user" -> getString(R.string.mf_off_user); else -> getString(R.string.mf_desc) }
             }
         }.start()

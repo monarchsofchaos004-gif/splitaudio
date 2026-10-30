@@ -40,7 +40,6 @@
     <string name="n_pair_ok">Paired. Finishing setup…</string>
     <string name="n_pair_fail">Pairing failed (%1$s). Open the pairing dialog again.</string>
     <string name="ch_pair">Pairing</string>
-    <string name="ch_alert">Needs your attention</string>
     <string name="n_wd_title">Turn on Wireless debugging</string>
     <string name="n_wd_text">SplitAudio could not reach this phone\'s debugging service. Connect to Wi-Fi and turn on Wireless debugging in Developer options.</string>
     <string name="s_need_pair">Finish the one-time setup in the app</string>

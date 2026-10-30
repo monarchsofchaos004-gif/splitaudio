@@ -17,6 +17,10 @@
 // Usage: CLASSPATH=/data/local/tmp/approute.dex app_process /system/bin AppRoute <musicUid,musicUid> <uid> [uid...]
 //        CLASSPATH=/data/local/tmp/approute.dex app_process /system/bin AppRoute map /data/local/tmp/approute.map
 //        CLASSPATH=/data/local/tmp/approute.dex app_process /system/bin AppRoute multifocus on|off|state
+//        CLASSPATH=/data/local/tmp/approute.dex app_process /system/bin AppRoute ask "<command>"   (asks a running router as the shell user)
+// Control channel (0.5): a running router listens on the abstract local socket "app.splitaudio.route" (nothing on the network).
+//   Every connection is checked with the uid of the process on the other end: only the app that started the router
+//   (env SPLITAUDIO_UID), the shell user (2000) and root answer, everybody else gets "denied".
 import android.media.*;
 import android.os.Looper;
 import java.lang.reflect.*;
@@ -32,6 +36,12 @@ public class AppRoute {
         if (a.length > 1 && a[0].equals("map")) { mapMain(a[1]); return; }
         if (a.length > 1 && a[0].equals("mixer")) { mixerMain(a[1]); return; }
         if (a.length > 0 && a[0].equals("players")) { for (int u : playingUids()) System.out.println(u); return; }
+        if (a.length > 1 && a[0].equals("ask")) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 1; i < a.length; i++) sb.append(i > 1 ? " " : "").append(a[i]);
+            askMain(sb.toString());
+            return;
+        }
         Looper.prepareMainLooper();
         java.util.HashSet<Integer> music = new java.util.HashSet<>();
         for (String m : a[0].split(",")) if (!m.isEmpty()) music.add(Integer.parseInt(m));
@@ -39,7 +49,7 @@ public class AppRoute {
         for (int i = 1; i < a.length; i++) uids[i - 1] = Integer.parseInt(a[i]);
         for (int u : uids) routed.add(u);
         log("start music=" + music + " video=" + java.util.Arrays.toString(uids));
-        Thread vt = new Thread(AppRoute::volServer); vt.setDaemon(true); vt.start();
+        startServers();
         long now = System.currentTimeMillis(), lastMusic = 0, lastBt = now, startAt = now;
         while (true) {
             now = System.currentTimeMillis();
@@ -199,7 +209,7 @@ public class AppRoute {
         mapMode = true;
         java.io.File f = new java.io.File(path);
         long mtime = -1; String regKey = "";
-        Thread vt = new Thread(AppRoute::volServer); vt.setDaemon(true); vt.start();
+        startServers();
         long now = System.currentTimeMillis(), lastPlay = 0, startAt = now;
         while (true) {
             now = System.currentTimeMillis();
@@ -293,24 +303,30 @@ public class AppRoute {
     }
 
     // Multi audio focus (built into Android 11+, off by default): without it, a video in another app takes the
-    //   audio focus and the music app pauses itself; routing alone can't prevent that. Switched on the first time
-    //   the rule goes on. Android saves it, so it survives reboot. Calls and alarms still pause everything.
+    //   audio focus and the music app pauses itself; routing alone can't prevent that. It is only switched on by itself
+    //   after the user said yes in the app (the app asks first): "multifocus on" writes MF_OK, "multifocus off" writes NO_MF
+    //   (and removes MF_OK), so neither file = the user hasn't decided = leave the system setting alone.
+    //   Android saves the setting, so it survives reboot. Calls and alarms still pause everything.
     //   Switching it (either way) makes Android send one focus loss to the current holder, so the music pauses
-    //   once: resume it. The app's "off" button writes NO_MF, so it is never switched back on automatically.
-    static final String NO_MF = "/data/local/tmp/approute.nomf";
+    //   once: resume it.
+    static final String NO_MF = "/data/local/tmp/approute.nomf", MF_OK = "/data/local/tmp/approute.mf_ok";
     static boolean mfChecked = false;
+    /** Switch it on by itself only when the user agreed (MF_OK), did not decline later (NO_MF) and it is not on already */
+    static boolean mfShouldEnable(boolean okFile, boolean nomfFile, boolean alreadyOn) { return okFile && !nomfFile && !alreadyOn; }
     static void multiFocusOnce(java.util.Set<Integer> music) {
         if (mfChecked) return;
         mfChecked = true;
-        if (new java.io.File(NO_MF).exists() || "1".equals(sh("settings get system multi_audio_focus_enabled"))) return;
+        if (!mfShouldEnable(new java.io.File(MF_OK).exists(), new java.io.File(NO_MF).exists(), false)) return;   // not agreed (or declined)
+        if ("1".equals(sh("settings get system multi_audio_focus_enabled"))) return;   // already on
         setMultiFocus(true, music);
     }
+    static void flag(String path, boolean present) {
+        try { if (present) new java.io.File(path).createNewFile(); else new java.io.File(path).delete(); }
+        catch (Throwable e) { log("flag " + path + " fail " + e); }
+    }
     static void multiFocusCmd(String c) {
-        if (c.equals("on")) { new java.io.File(NO_MF).delete(); setMultiFocus(true, null); }
-        else if (c.equals("off")) {
-            try { new java.io.File(NO_MF).createNewFile(); } catch (Throwable e) { log("nomf write fail " + e); }
-            setMultiFocus(false, null);
-        }
+        if (c.equals("on")) { flag(NO_MF, false); flag(MF_OK, true); setMultiFocus(true, null); }
+        else if (c.equals("off")) { flag(MF_OK, false); flag(NO_MF, true); setMultiFocus(false, null); }
         System.out.println("multifocus=" + ("1".equals(sh("settings get system multi_audio_focus_enabled")) ? "on" : "off"));
     }
     static void setMultiFocus(boolean on, java.util.Set<Integer> music) {
@@ -336,11 +352,58 @@ public class AppRoute {
         } catch (Throwable e) { return ""; }
     }
 
-    // Volume keys: while Bluetooth is connected, pressing volume in a speaker-routed app should change the
-    //   phone speaker volume. The app's accessibility service asks here. Listens on 127.0.0.1:47821 only;
-    //   one command per line: state -> on/off; vol up|down <package> -> ok <percent> / pass (not routed, or rule off)
-    static final int VOL_PORT = 47821, VOL_STEP = 10, VOL_MAX = 150;
+    // Control channel and volume keys. The app (status, volume keys) talks to the running router over the abstract local socket
+    //   "app.splitaudio.route": nothing on the network, so the app needs no INTERNET permission. Every connection is checked with
+    //   the uid of the process on the other end (SO_PEERCRED): root, the shell user and the app that started this router
+    //   (env SPLITAUDIO_UID, set by the app in the start command) are served, everybody else gets "denied" and is closed.
+    //   One command per line: state -> on/off; mode -> map/legacy;
+    //   vol up|down <package> -> ok <percent> / pass (app not routed to the speaker, or rule off).
+    //   Debug only: with env SPLITAUDIO_TCP=1 the old plain TCP port 127.0.0.1:47821 is opened too (no peer check possible).
+    static final String SOCK = "app.splitaudio.route";
+    static final int VOL_PORT = 47821;   // debug only (see above)
+    static final int VOL_STEPS = 15;     // the volume keys move the speaker volume in about this many steps, whatever the device's index range
+    static final int OWNER_UID = parseUid(System.getenv("SPLITAUDIO_UID"));
+    static int lastDeniedUid = -2;       // log a refused uid once, not on every attempt
+
+    static int parseUid(String s) {
+        try { return s == null ? -1 : Integer.parseInt(s.trim()); } catch (NumberFormatException e) { return -1; }
+    }
+    /** Who may talk to the router: root, the shell user, and the app that started it (ownerUid >= 0) */
+    static boolean allowed(int peerUid, int ownerUid) { return peerUid == 0 || peerUid == 2000 || (ownerUid >= 0 && peerUid == ownerUid); }
+    /** Volume key step for a stream index range min..max: about VOL_STEPS steps, at least 1 index */
+    static int volStep(int min, int max) { return Math.max(1, Math.round((max - min) / (float) VOL_STEPS)); }
+    static int clampIdx(int idx, int step, boolean up, int min, int max) { return Math.max(min, Math.min(max, idx + (up ? step : -step))); }
+    static int percent(int idx, int max) { return max <= 0 ? 0 : idx * 100 / max; }
+
+    static void startServers() {
+        Thread vt = new Thread(AppRoute::volServer); vt.setDaemon(true); vt.start();
+        if ("1".equals(System.getenv("SPLITAUDIO_TCP"))) {
+            Thread tt = new Thread(AppRoute::tcpServer); tt.setDaemon(true); tt.start();
+            log("debug: plain TCP control port 127.0.0.1:" + VOL_PORT + " is open (no peer check)");
+        }
+    }
+
     static void volServer() {
+        try (android.net.LocalServerSocket ss = new android.net.LocalServerSocket(SOCK)) {
+            log("control socket @" + SOCK + (OWNER_UID >= 0 ? ", owner uid " + OWNER_UID : ", shell only"));
+            while (true) {
+                try (android.net.LocalSocket s = ss.accept()) {
+                    int peer = s.getPeerCredentials().getUid();
+                    if (!allowed(peer, OWNER_UID)) {
+                        if (peer != lastDeniedUid) { lastDeniedUid = peer; log("control: denied uid " + peer); }
+                        s.getOutputStream().write("denied\n".getBytes()); s.getOutputStream().flush();
+                        continue;
+                    }
+                    s.setSoTimeout(1500);
+                    String line = new java.io.BufferedReader(new java.io.InputStreamReader(s.getInputStream())).readLine();
+                    String out = volCmd(line == null ? "" : line.trim());
+                    s.getOutputStream().write((out + "\n").getBytes()); s.getOutputStream().flush();
+                } catch (Throwable e) { log("control conn err " + e); }
+            }
+        } catch (Throwable e) { log("control server err " + e); }
+    }
+
+    static void tcpServer() {
         try (java.net.ServerSocket ss = new java.net.ServerSocket(VOL_PORT, 8, java.net.InetAddress.getByName("127.0.0.1"))) {
             while (true) {
                 try (java.net.Socket s = ss.accept()) {
@@ -348,15 +411,52 @@ public class AppRoute {
                     String line = new java.io.BufferedReader(new java.io.InputStreamReader(s.getInputStream())).readLine();
                     String out = volCmd(line == null ? "" : line.trim());
                     s.getOutputStream().write((out + "\n").getBytes()); s.getOutputStream().flush();
-                } catch (Throwable e) { log("vol conn err " + e); }
+                } catch (Throwable e) { log("tcp conn err " + e); }
             }
-        } catch (Throwable e) { log("vol server err " + e); }
+        } catch (Throwable e) { log("tcp server err " + e); }
     }
+
+    // "AppRoute ask <command>": sends one command line to the running router as the calling user (shell) and prints the answer.
+    //   For debugging and scripts (approute.sh ask state); the app connects to the socket itself.
+    static void askMain(String cmd) {
+        String r = null; int rc = 0;
+        android.net.LocalSocket s = new android.net.LocalSocket();
+        try {
+            s.connect(new android.net.LocalSocketAddress(SOCK, android.net.LocalSocketAddress.Namespace.ABSTRACT));
+            s.setSoTimeout(3000);
+            s.getOutputStream().write((cmd + "\n").getBytes()); s.getOutputStream().flush();
+            r = new java.io.BufferedReader(new java.io.InputStreamReader(s.getInputStream())).readLine();
+        } catch (Throwable e) { r = "err " + e; rc = 2; }
+        finally { try { s.close(); } catch (Throwable e) {} }
+        System.out.println(r == null ? "no_reply" : r);
+        if (rc != 0) System.exit(rc);
+    }
+
+    static Object audioService() throws Exception {
+        return Class.forName("android.media.IAudioService$Stub").getMethod("asInterface", android.os.IBinder.class)
+            .invoke(null, Class.forName("android.os.ServiceManager").getMethod("getService", String.class).invoke(null, "audio"));
+    }
+
+    // The music stream's index range differs per device (AOSP 0..15, Xiaomi 0..150, ...): ask the audio service once and keep it.
+    static int volMin = 0, volMax = -1;
+    static boolean volRange(Object as) {
+        if (volMax > 0) return true;
+        try {
+            int max = (Integer) as.getClass().getMethod("getStreamMaxVolume", int.class).invoke(as, 3 /* STREAM_MUSIC */);
+            int min = 0;
+            try { min = (Integer) as.getClass().getMethod("getStreamMinVolume", int.class).invoke(as, 3); } catch (Throwable e) { log("no stream min volume: " + e); }
+            if (max <= min) { log("odd music volume range " + min + ".." + max); return false; }
+            volMin = min; volMax = max;
+            log("music volume range " + volMin + ".." + volMax + ", key step " + volStep(volMin, volMax));
+            return true;
+        } catch (Throwable e) { log("volume range err " + e); return false; }   // unknown range: leave the keys alone (pass) instead of guessing
+    }
+
     static String volCmd(String line) {
         String[] p = line.split(" ");
         if (p[0].equals("state")) return policy != null ? "on" : "off";
         if (p[0].equals("mode")) return mapMode ? "map" : "legacy";
-        if (!p[0].equals("vol") || p.length < 3) return "err";
+        if (!p[0].equals("vol") || p.length < 3 || !(p[1].equals("up") || p[1].equals("down"))) return "err";
         if (policy == null) return "pass";
         try {
             Object pm = Class.forName("android.content.pm.IPackageManager$Stub").getMethod("asInterface", android.os.IBinder.class)
@@ -366,20 +466,20 @@ public class AppRoute {
                 if (m.getName().equals("getPackageUid") && m.getParameterTypes().length == 3) {
                     uid = (Integer) m.invoke(pm, p[2], m.getParameterTypes()[1] == long.class ? (Object) 0L : (Object) 0, 0); break; }
             if (!routed.contains(uid)) return "pass";
-            Object as = Class.forName("android.media.IAudioService$Stub").getMethod("asInterface", android.os.IBinder.class)
-                .invoke(null, Class.forName("android.os.ServiceManager").getMethod("getService", String.class).invoke(null, "audio"));
+            Object as = audioService();
+            if (!volRange(as)) return "pass";
             Class<?> ada = Class.forName("android.media.AudioDeviceAttributes"), vic = Class.forName("android.media.VolumeInfo"), vib = Class.forName("android.media.VolumeInfo$Builder");
             Object spk = ada.getConstructor(int.class, int.class, String.class).newInstance(2, 2 /* built-in speaker */, "");
             Object q = vib.getMethod("build").invoke(vib.getConstructor(int.class).newInstance(3 /* STREAM_MUSIC */));
             Object cur = as.getClass().getMethod("getDeviceVolume", vic, ada, String.class).invoke(as, q, spk, "com.android.shell");
             int idx = (Integer) vic.getMethod("getVolumeIndex").invoke(cur);
-            idx = Math.max(0, Math.min(VOL_MAX, idx + (p[1].equals("up") ? VOL_STEP : -VOL_STEP)));
+            idx = clampIdx(idx, volStep(volMin, volMax), p[1].equals("up"), volMin, volMax);
             Object b = vib.getConstructor(int.class).newInstance(3);
             vib.getMethod("setVolumeIndex", int.class).invoke(b, idx);
-            vib.getMethod("setMinVolumeIndex", int.class).invoke(b, 0);
-            vib.getMethod("setMaxVolumeIndex", int.class).invoke(b, VOL_MAX);
+            vib.getMethod("setMinVolumeIndex", int.class).invoke(b, volMin);
+            vib.getMethod("setMaxVolumeIndex", int.class).invoke(b, volMax);
             as.getClass().getMethod("setDeviceVolume", vic, ada, String.class).invoke(as, vib.getMethod("build").invoke(b), spk, "com.android.shell");
-            return "ok " + (idx * 100 / VOL_MAX);
+            return "ok " + percent(idx, volMax);
         } catch (Throwable e) { log("vol err " + e); return "pass"; }
     }
 

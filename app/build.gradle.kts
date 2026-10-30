@@ -43,6 +43,11 @@ android {
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
     testOptions { unitTests.isReturnDefaultValues = true }
+    // The routing helper (route/AppRoute.java, default package) is compiled into the unit tests too, so its pure helpers
+    // (volume step maths, who may use the control socket, file readers, multi focus flags) are tested straight from the source.
+    sourceSets {
+        getByName("test") { java.srcDir("../route") }
+    }
 }
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")

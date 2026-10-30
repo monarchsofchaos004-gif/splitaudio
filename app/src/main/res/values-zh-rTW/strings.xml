@@ -36,7 +36,7 @@
     <string name="split_on">分流中 ✓</string>
     <string name="split_waiting">路由在跑，等音樂播放</string>
     <string name="split_none">沒在跑（藍牙＋音樂播放時自動啟動）</string>
-    <string name="mf_off_auto">未開（第一次分流時自動打開）</string>
+    <string name="mf_off_auto">未開（要開之前會先問你）</string>
     <string name="mf_off_user">已關（你按的，不會自動打開）</string>
     <string name="s_split">分流中</string>
     <string name="s_bt_idle">藍牙已連（沒在播音樂）</string>
@@ -61,7 +61,7 @@
     <string name="mode_title">模式</string>
     <string name="mode_simple">簡單</string>
     <string name="mode_custom">自訂</string>
-    <string name="mode_simple_d">音樂 App（YT Music）走藍牙，其他 App 都走手機喇叭。</string>
+    <string name="mode_simple_d">你選的音樂 App 走藍牙，其他 App 都走手機喇叭。</string>
     <string name="mode_custom_d">每個 App 自己選要從哪裡出聲。</string>
     <string name="mf_title">開影片不打斷音樂</string>
     <string name="mf_desc">讓兩個 App 可以同時出聲。</string>
@@ -85,4 +85,15 @@
     <string name="pro_msg">每個 App 自己選輸出、每個 App 分開調音量是 Pro 功能。一次買斷即可解鎖（購買功能之後的版本開放）。</string>
     <string name="pro_trial_left">Pro 試用：剩 %1$d 天</string>
     <string name="pro_trial_over">Pro 試用已結束</string>
+    <string name="btn_music">選音樂 App（已選 %1$d）</string>
+    <string name="music_title">音樂 App</string>
+    <string name="music_hint">勾選你的音樂 App：它的聲音留在藍牙，其他 App 都走手機喇叭。至少要留一個。</string>
+    <string name="music_last">至少要留一個音樂 App。</string>
+    <string name="mf_ask_title">開影片要不要打斷音樂？</string>
+    <string name="mf_ask_desc">Android 預設一開影片，音樂就會自己暫停。SplitAudio 可以幫你打開 Android 內建的「多個 App 同時播放」，兩個 App 就能一起出聲。這是系統設定（重開機仍有效）；來電、鬧鐘照樣會讓全部暫停。打開的那一下，音樂會停大約一秒。</string>
+    <string name="mf_ask_on">開啟（兩個 App 會同時出聲）</string>
+    <string name="mf_ask_off">不要</string>
+    <string name="n_mf_title">開影片會不會暫停音樂？</string>
+    <string name="n_mf_text">點這裡決定。</string>
+    <string name="ch_alert">需要你處理</string>
 </resources>

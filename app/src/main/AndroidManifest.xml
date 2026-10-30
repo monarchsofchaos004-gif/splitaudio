@@ -1,15 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Shared by both flavors. Flavor-specific parts: src/fdroid (VolKeyService, INTERNET) and src/play (built-in ADB: pairing service, extra permissions). -->
+    <!-- Shared by both flavors. Flavor-specific parts: src/fdroid (VolKeyService; MonitorService with the specialUse foreground service type)
+         and src/play (MonitorService with connectedDevice; built-in ADB: pairing service, INTERNET, extra permissions).
+         No INTERNET here: the app talks to its routing helper over a local socket, which needs no permission. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <!-- Custom mode lists apps that have a launcher icon (no QUERY_ALL_PACKAGES) -->
+    <!-- The app pickers (music apps, custom mode, volume) list apps that have a launcher icon; the volume keys leave the home screen app(s) alone,
+         found with a HOME intent (package visibility, Android 11+). No QUERY_ALL_PACKAGES. -->
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN"/>
             <category android:name="android.intent.category.LAUNCHER"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN"/>
+            <category android:name="android.intent.category.HOME"/>
         </intent>
     </queries>
     <application android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:allowBackup="false" android:theme="@android:style/Theme.DeviceDefault.Light">
@@ -20,10 +26,9 @@
             </intent-filter>
         </activity>
         <activity android:name=".AppsActivity" android:exported="false" android:label="@string/apps_title"/>
+        <activity android:name=".MusicActivity" android:exported="false" android:label="@string/music_title"/>
         <activity android:name=".MixerActivity" android:exported="false" android:label="@string/mixer_title"/>
-        <service android:name=".MonitorService" android:exported="false" android:foregroundServiceType="specialUse">
-            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="per-app audio routing monitor"/>
-        </service>
+        <!-- MonitorService: declared in src/fdroid and src/play (the foreground service type differs) -->
         <receiver android:name=".BootReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>

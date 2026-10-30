@@ -36,7 +36,7 @@
     <string name="split_on">active ✓</string>
     <string name="split_waiting">router running, waiting for music</string>
     <string name="split_none">not running (starts by itself when Bluetooth is connected and music plays)</string>
-    <string name="mf_off_auto">off (turned on by itself the first time the split starts)</string>
+    <string name="mf_off_auto">off (SplitAudio asks you before it turns it on)</string>
     <string name="mf_off_user">off (you turned it off, it won\'t turn on by itself)</string>
     <string name="s_split">Split active</string>
     <string name="s_bt_idle">Bluetooth connected (no music playing)</string>
@@ -61,7 +61,7 @@
     <string name="mode_title">Mode</string>
     <string name="mode_simple">Simple</string>
     <string name="mode_custom">Custom</string>
-    <string name="mode_simple_d">Music app (YT Music) → Bluetooth, every other app → phone speaker.</string>
+    <string name="mode_simple_d">Your music apps → Bluetooth, every other app → phone speaker.</string>
     <string name="mode_custom_d">You choose the output for each app.</string>
     <string name="mf_title">Videos don\'t pause the music</string>
     <string name="mf_desc">Lets two apps play at the same time.</string>
@@ -85,4 +85,15 @@
     <string name="pro_msg">Choosing an output for each app and setting each app\'s volume are Pro features. A one-time purchase unlocks them (purchase will be available in a later version).</string>
     <string name="pro_trial_left">Pro trial: %1$d day(s) left</string>
     <string name="pro_trial_over">Pro trial ended</string>
+    <string name="btn_music">Choose music apps (%1$d selected)</string>
+    <string name="music_title">Music apps</string>
+    <string name="music_hint">Tick your music apps. Their sound stays on Bluetooth; every other app plays on the phone speaker. One music app must stay ticked.</string>
+    <string name="music_last">At least one music app must stay selected.</string>
+    <string name="mf_ask_title">Should a video pause your music?</string>
+    <string name="mf_ask_desc">By default Android pauses the music when another app starts a video. SplitAudio can switch on Android\'s built-in multi audio focus, so both apps keep playing. It is a system setting (it survives a reboot); calls and alarms still pause everything. The music stops for about a second at the moment it is switched on.</string>
+    <string name="mf_ask_on">Turn it on (both apps play at the same time)</string>
+    <string name="mf_ask_off">No, thanks</string>
+    <string name="n_mf_title">Will a video pause your music?</string>
+    <string name="n_mf_text">Tap here to decide.</string>
+    <string name="ch_alert">Needs your attention</string>
 </resources>

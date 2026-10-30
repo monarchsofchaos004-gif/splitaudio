@@ -7,7 +7,6 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ServiceInfo
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
@@ -18,13 +17,33 @@ import android.os.Looper
 
 /** 常駐（前景通知）：聽「播放變化」「輸出裝置變化」→ 藍牙連著＋有音樂在播＋路由沒在跑 → 經 [Backends]（Shizuku 或 Play 版內建 ADB）啟動 AppRoute。
  *  沒有定時輪詢；只有藍牙連著時每 60 秒補查一次（防回呼漏掉）。啟動失敗 30 秒內不重試。
- *  自訂模式：有指定輸出的 App＋有任何聲音在播（本 App 看不到是誰在播，路由程式看得到）就起，不管藍牙；每 60 秒補查。 */
+ *  自訂模式：有指定輸出的 App＋有任何聲音在播（本 App 看不到是誰在播，路由程式看得到）就起，不管藍牙；每 60 秒補查。
+ *  回呼都存成欄位，服務結束（onDestroy）時全部解除；連發的事件共用一個固定的 Runnable，重新計時、只跑最後一次。 */
 class MonitorService : Service() {
     private val h = Handler(Looper.getMainLooper())
     private var lastTry = 0L
     private var lastMix = 0L
     @Volatile private var state = ""
     private lateinit var am: AudioManager
+    private var binderHandle: Any? = null
+
+    private val playRun = Runnable { check("play"); mixer() }
+    private val btRun = Runnable { check("bt") }
+    private val startRun = Runnable { check("start") }
+    private val shizukuRun = Runnable { check("shizuku") }
+    private val tickRun = object : Runnable {
+        override fun run() { if (bt() || Outputs.custom(this@MonitorService)) check("tick"); h.postDelayed(this, 60_000) }
+    }
+    private val playbackCb = object : AudioManager.AudioPlaybackCallback() {
+        override fun onPlaybackConfigChanged(c: MutableList<AudioPlaybackConfiguration>?) { rearm(playRun, 1200) }
+    }
+    private val deviceCb = object : AudioDeviceCallback() {
+        override fun onAudioDevicesAdded(a: Array<out AudioDeviceInfo>?) { rearm(btRun, 2500) }
+        override fun onAudioDevicesRemoved(r: Array<out AudioDeviceInfo>?) { rearm(btRun, 2500) }
+    }
+
+    /** 重新計時：同一個 Runnable 在等的話先取消，所以事件連發只會跑最後一次 */
+    private fun rearm(r: Runnable, delayMs: Long) { h.removeCallbacks(r); h.postDelayed(r, delayMs) }
 
     override fun onBind(i: Intent?): IBinder? = null
 
@@ -32,35 +51,60 @@ class MonitorService : Service() {
         super.onCreate()
         state = getString(R.string.s_idle)
         am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        startForeground(1, notif(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-        am.registerAudioPlaybackCallback(object : AudioManager.AudioPlaybackCallback() {
-            override fun onPlaybackConfigChanged(c: MutableList<AudioPlaybackConfiguration>?) { h.postDelayed({ check("play"); mixer() }, 1200) }
-        }, h)
-        am.registerAudioDeviceCallback(object : AudioDeviceCallback() {
-            override fun onAudioDevicesAdded(a: Array<out AudioDeviceInfo>?) { h.postDelayed({ check("bt") }, 2500) }
-            override fun onAudioDevicesRemoved(r: Array<out AudioDeviceInfo>?) { h.postDelayed({ check("bt") }, 2500) }
-        }, h)
-        ShizukuBackend.onBinderReceived { h.post { check("shizuku") } }
+        startForeground(1, notif(), Dist.fgsType)
+        am.registerAudioPlaybackCallback(playbackCb, h)
+        am.registerAudioDeviceCallback(deviceCb, h)
+        binderHandle = ShizukuBackend.addBinderListener { rearm(shizukuRun, 0) }
         Dist.onServiceCreate(this)
-        tick()
+        rearm(tickRun, 60_000)
     }
 
-    override fun onDestroy() { Dist.onServiceDestroy(this); super.onDestroy() }
+    override fun onDestroy() {
+        h.removeCallbacksAndMessages(null)
+        if (::am.isInitialized) {
+            try { am.unregisterAudioPlaybackCallback(playbackCb) } catch (_: Throwable) {}
+            try { am.unregisterAudioDeviceCallback(deviceCb) } catch (_: Throwable) {}
+        }
+        ShizukuBackend.removeBinderListener(binderHandle); binderHandle = null
+        Dist.onServiceDestroy(this)
+        super.onDestroy()
+    }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int { h.post { check("start") }; return START_STICKY }
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int { rearm(startRun, 0); return START_STICKY }
 
     private fun bt(): Boolean = am.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any {
         it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || it.type == AudioDeviceInfo.TYPE_BLE_HEADSET || it.type == AudioDeviceInfo.TYPE_BLE_SPEAKER }
 
-    private fun tick() { h.postDelayed({ if (bt() || Outputs.custom(this)) check("tick"); tick() }, 60_000) }
+    /** 路由規則現在是開的嗎？（背景執行緒叫）順便：第一次看到分流掛上時，若用戶還沒決定「開影片會不會暫停音樂」就發通知請他決定 */
+    private fun ruleOnNoted(): Boolean {
+        val on = Route.ruleOn()
+        if (on) noteSplit()
+        return on
+    }
+
+    /** 用戶還沒決定（Mf.ASK）而且系統的 multi audio focus 是關的 → 發一則通知（10 分鐘內不重發）。背景執行緒叫。 */
+    private fun noteSplit() {
+        val c = applicationContext
+        val d = Mf.decision(c)
+        if (d != Mf.ASK) return
+        val now = System.currentTimeMillis()
+        val last = Mf.lastAsk(c)
+        if (last > 0L && now >= last && now - last < Mf.COOLDOWN_MS) return   // 先用便宜的條件擋掉，不用每次都去問 shell
+        val sys = Route.multiFocusState()
+        val d2 = Mf.reconcile(d, sys)
+        if (d2 != d) { Mf.setDecision(c, d2); return }   // 系統設定早就是開的（舊版開的）→ 不用問
+        if (!Mf.shouldNotify(d2, sys, last, now)) return
+        Mf.markAsked(c, now)
+        Alerts.post(c, Alerts.ID_MF, getString(R.string.n_mf_title), getString(R.string.n_mf_text))
+    }
 
     private fun check(why: String) {
         if (Outputs.custom(this)) { checkCustom(); return }
         val b = bt(); val music = am.isMusicActive
-        if (!(b && music)) { Thread { setState(getString(if (Route.ruleOn()) R.string.s_split else if (b) R.string.s_bt_idle else R.string.s_idle)) }.start(); return }
+        if (!(b && music)) { Thread { setState(getString(if (ruleOnNoted()) R.string.s_split else if (b) R.string.s_bt_idle else R.string.s_idle)) }.start(); return }
         Thread {
             if (Route.mode() == "map") Route.stop()   // 剛從自訂模式換回來還在跑的 → 停掉照簡單模式重起
-            if (Route.ruleOn()) { setState(getString(R.string.s_split)); return@Thread }
+            if (ruleOnNoted()) { setState(getString(R.string.s_split)); return@Thread }
             if (Route.running()) { setState(getString(R.string.s_router_wait)); return@Thread }
             val now = System.currentTimeMillis()
             if (now - lastTry < 30_000) return@Thread
@@ -68,16 +112,16 @@ class MonitorService : Service() {
             if (Backends.current() == null) { setState(Dist.needSetupText(this)); return@Thread }
             val r = Route.start(this)
             Thread.sleep(2500)
-            setState(if (Route.ruleOn()) getString(R.string.s_split) else Dist.startResultText(this, r))
+            setState(if (ruleOnNoted()) getString(R.string.s_split) else Dist.startResultText(this, r))
         }.start()
     }
 
     private fun checkCustom() {
         val any = Outputs.hasAny(this)
-        if (!(any && am.isMusicActive)) { Thread { setState(getString(if (Route.ruleOn()) R.string.s_split else if (!any) R.string.s_no_apps else R.string.s_idle)) }.start(); return }
+        if (!(any && am.isMusicActive)) { Thread { setState(getString(if (ruleOnNoted()) R.string.s_split else if (!any) R.string.s_no_apps else R.string.s_idle)) }.start(); return }
         Thread {
             if (Route.running() && Route.mode() != "map") Route.stop()   // 簡單模式的路由還在跑 → 換成自訂
-            if (Route.ruleOn()) { setState(getString(R.string.s_split)); return@Thread }
+            if (ruleOnNoted()) { setState(getString(R.string.s_split)); return@Thread }
             if (Route.running()) { setState(getString(R.string.s_custom_wait)); return@Thread }
             val now = System.currentTimeMillis()
             if (now - lastTry < 30_000) return@Thread
@@ -85,7 +129,7 @@ class MonitorService : Service() {
             if (Backends.current() == null) { setState(Dist.needSetupText(this)); return@Thread }
             val r = Route.start(this)
             Thread.sleep(2500)
-            setState(if (Route.ruleOn()) getString(R.string.s_split) else Dist.startResultText(this, r))
+            setState(if (ruleOnNoted()) getString(R.string.s_split) else Dist.startResultText(this, r))
         }.start()
     }
 
@@ -108,7 +152,7 @@ class MonitorService : Service() {
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(NotificationChannel("route", getString(R.string.ch_route), NotificationManager.IMPORTANCE_MIN))
         val pi = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
-        return Notification.Builder(this, "route").setSmallIcon(android.R.drawable.ic_lock_silent_mode_off)
+        return Notification.Builder(this, "route").setSmallIcon(R.drawable.ic_stat_route)
             .setContentTitle(getString(R.string.notif_title, state)).setContentIntent(pi).setOngoing(true).build()
     }
 

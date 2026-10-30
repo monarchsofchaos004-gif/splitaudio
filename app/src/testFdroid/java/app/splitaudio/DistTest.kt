@@ -8,4 +8,16 @@ class DistTest {
     @Test fun backends_shizukuOnly() = assertEquals(listOf<Backend>(ShizukuBackend), Dist.backends())
     @Test fun everythingIsFree() = assertTrue(Dist.proAlways)
     @Test fun hasVolumeKeys() = assertTrue(Dist.hasVolKey)
+    /** manifest 宣告的是 specialUse（src/fdroid/AndroidManifest.xml）；startForeground 的類型要是它的子集 */
+    @Test fun foregroundServiceType_isSpecialUse() = assertEquals(android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE, Dist.fgsType)
+
+    /** startForeground 的類型一定要是 manifest 宣告類型的子集，不然執行時直接丟例外：兩邊要一致（這個版本的 manifest 是 src/fdroid/AndroidManifest.xml） */
+    @Test fun manifestDeclaresTheSameForegroundType() {
+        val xml = listOf("src/fdroid/AndroidManifest.xml", "app/src/fdroid/AndroidManifest.xml").map { java.io.File(it) }.first { it.exists() }.readText()
+        val m = Regex("<service[^>]*android:name=\"\\.MonitorService\"[^>]*android:foregroundServiceType=\"([A-Za-z|]+)\"").find(xml)
+        assertNotNull("MonitorService has no foregroundServiceType in the fdroid manifest", m)
+        assertEquals("specialUse", m!!.groupValues[1])
+        assertTrue(xml.contains("android.permission.FOREGROUND_SERVICE_SPECIAL_USE"))
+        assertFalse("the fdroid build must not ask for INTERNET", xml.contains("android.permission.INTERNET\""))
+    }
 }

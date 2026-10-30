@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
     <!-- INTERNET: the built-in ADB client talks to this phone's own adbd over a TCP socket (127.0.0.1 / the phone's own Wi-Fi address). No data leaves the phone. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Foreground service type "connectedDevice" (MonitorService, PairService): it needs this permission and, on Android 14+, one of the
+         CHANGE_NETWORK_STATE / CHANGE_WIFI_STATE / CHANGE_WIFI_MULTICAST_STATE permissions (the last one is declared below) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"/>
     <!-- Needed by Android's NSD (mDNS) discovery of the phone's own Wireless debugging service -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
@@ -15,9 +18,10 @@
     <uses-permission android:name="android.permission.READ_PHONE_STATE" tools:node="remove"/>
     <application android:name=".adb.App">
         <activity android:name=".adb.LicensesActivity" android:exported="false" android:label="@string/lic_title"/>
-        <service android:name=".adb.PairService" android:exported="false" android:foregroundServiceType="specialUse">
-            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="finds the phone's own Wireless debugging pairing service and takes the pairing code from a notification"/>
-        </service>
+        <!-- the monitor that starts the router when Bluetooth is connected and music plays (it also reconnects the built-in ADB when Wi-Fi comes up) -->
+        <service android:name=".MonitorService" android:exported="false" android:foregroundServiceType="connectedDevice"/>
+        <!-- finds the phone's own Wireless debugging pairing service (mDNS) and takes the pairing code from a notification -->
+        <service android:name=".adb.PairService" android:exported="false" android:foregroundServiceType="connectedDevice"/>
         <receiver android:name=".adb.PairReceiver" android:exported="false"/>
     </application>
 </manifest>

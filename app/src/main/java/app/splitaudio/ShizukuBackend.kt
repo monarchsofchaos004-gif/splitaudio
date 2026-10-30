@@ -13,8 +13,17 @@ object ShizukuBackend : Backend {
     override fun granted(): Boolean = try { alive() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED } catch (_: Throwable) { false }
     fun request() { try { if (alive() && !granted()) Shizuku.requestPermission(REQ) } catch (_: Throwable) {} }
 
-    /** Shizuku 服務（重新）出現時叫 cb（sticky：已經在的話馬上叫一次） */
-    fun onBinderReceived(cb: () -> Unit) { try { Shizuku.addBinderReceivedListenerSticky { cb() } } catch (_: Throwable) {} }
+    /** Shizuku 服務（重新）出現時叫 cb（sticky：已經在的話馬上叫一次）。回傳的把手交給 [removeBinderListener]（失敗回 null）。 */
+    fun addBinderListener(cb: () -> Unit): Any? = try {
+        val l = Shizuku.OnBinderReceivedListener { cb() }
+        Shizuku.addBinderReceivedListenerSticky(l)
+        l
+    } catch (_: Throwable) { null }
+
+    /** 解除 [addBinderListener] 加的監聽（服務結束時叫，不然 Shizuku 一直抓著已經死掉的服務） */
+    fun removeBinderListener(handle: Any?) {
+        try { if (handle is Shizuku.OnBinderReceivedListener) Shizuku.removeBinderReceivedListener(handle) } catch (_: Throwable) {}
+    }
 
     private fun newProcess(cmd: String): Process {
         val m = Shizuku::class.java.getDeclaredMethod("newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java)

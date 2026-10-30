@@ -1,6 +1,7 @@
 package app.splitaudio
 
 import android.content.Context
+import android.content.pm.ServiceInfo
 import android.widget.LinearLayout
 
 /** fdroid 版（F-Droid／GitHub 發行）與 play 版的差異都收在這裡；兩個版本各有一份同名同介面的 Dist（src/play 那份多了內建 ADB）。
@@ -14,6 +15,9 @@ object Dist {
 
     /** 有沒有無障礙音量鍵（VolKeyService） */
     val hasVolKey = true
+
+    /** 常駐監看服務（MonitorService）的前景服務類型；要跟這個版本的 manifest 宣告的一樣。fdroid＝specialUse（沒有更貼切的類型） */
+    val fgsType = ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
 
     /** 主畫面的「一次性設定」區塊；fdroid 版沒有，用主畫面內建的 Shizuku 那一列 */
     @Suppress("UNUSED_PARAMETER")

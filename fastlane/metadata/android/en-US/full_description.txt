@@ -5,24 +5,24 @@ Playing YouTube Music on a Bluetooth speaker, then opening Facebook, Instagram o
 Features
 - Music app on Bluetooth, everything else on the phone speaker
 - Volume keys: in a speaker-routed app they change the phone speaker volume; in the music app or on the home screen they change Bluetooth as usual
-- A video in another app no longer pauses the music (uses Android's built-in "multi audio focus" setting, which you can switch off in the app)
+- A video in another app no longer pauses the music (uses Android's built-in "multi audio focus" setting; the app asks you before it switches it on, and you can switch it off again)
 - Fail-safe: if the helper process dies, its routing rule dies with it and audio falls back to Bluetooth, never to silence
-- Default music app: YouTube Music (and the Morphe-patched package); other music apps can be configured in the source
+- Choose your music apps in the app (several are fine); the default is YouTube Music (and the Morphe-patched package)
 
 Status: alpha. Verified on one device only (Xiaomi 15, HyperOS 3, Android 16). The app interface is currently Traditional Chinese.
 
 Requirements
 - Shizuku (https://shizuku.rikka.app/), started via wireless debugging. No root needed.
-- Android 10 or newer.
+- Android 12 or newer (the volume keys need Android 13).
 
 Permissions
 - Shizuku: used to start the small routing helper as the shell user, which is what allows a system-level audio routing rule.
 - Accessibility service (optional): only filters the volume keys and reads the foreground app's package name. It does not read screen text.
 - Notifications and a foreground service: for the "routing on" status notification and the background monitor.
 - Start at boot: to bring the monitor back after a reboot.
-- Internet permission: used only for communication on 127.0.0.1 between the app and its helper.
+- No Internet permission: the app and its helper talk over a local socket that only the app, the shell user and root can use.
 
 Privacy
-No network access beyond 127.0.0.1, no analytics, no ads, no tracking, no data collection.
+No network access (the app does not even have the Internet permission), no analytics, no ads, no tracking, no data collection.
 
 Open source (MIT license).

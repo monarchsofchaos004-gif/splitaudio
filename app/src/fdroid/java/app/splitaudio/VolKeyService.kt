@@ -11,12 +11,9 @@ import android.view.accessibility.AccessibilityEvent
 import android.widget.Toast
 
 /** 音量鍵：分流規則掛著＋前景是走喇叭的 App → 調「手機喇叭」（問 AppRoute 本機指令口）；
- *  音樂 App／桌面／系統介面照常調藍牙。規則沒掛＝完全不攔。
+ *  音樂 App（[Music] 清單，用戶可選）／桌面（[Launcher] 動態查）／系統介面照常調藍牙。規則沒掛＝完全不攔。
  *  Android 13（API 33）起才有系統的 VolumeInfo（路由程式靠它調喇叭音量）→ API 33 以前不輪詢、不攔任何鍵。 */
 class VolKeyService : AccessibilityService() {
-    private val skip = setOf("app.morphe.android.apps.youtube.music", "com.google.android.apps.youtube.music",
-        "com.miui.home", "com.android.systemui", "com.android.launcher3")
-    private val home = setOf("com.miui.home", "com.android.systemui", "com.android.launcher3")
     @Volatile private var routeOn = false
     @Volatile private var alive = true
     private val consumed = HashSet<Int>()
@@ -44,7 +41,8 @@ class VolKeyService : AccessibilityService() {
         if (e.action != KeyEvent.ACTION_DOWN || !routeOn) return false
         val fg = try { rootInActiveWindow?.packageName?.toString() } catch (_: Exception) { null } ?: return false
         // 自訂模式：音樂 App 也可能被指定走喇叭 → 只略過桌面／系統介面，其餘交給路由程式判斷（不是走喇叭的回 pass，照原本調）
-        if ((if (Outputs.custom(this)) fg in home else fg in skip) || fg == packageName) return false
+        val home = Launcher.packages(this)
+        if ((if (Outputs.custom(this)) fg in home else fg in home || fg in Music.set(this)) || fg == packageName) return false
         consumed.add(k)
         val dir = if (k == KeyEvent.KEYCODE_VOLUME_UP) "up" else "down"
         Thread {

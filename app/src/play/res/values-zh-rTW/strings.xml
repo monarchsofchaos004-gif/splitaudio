@@ -40,7 +40,6 @@
     <string name="n_pair_ok">配對成功，正在完成設定…</string>
     <string name="n_pair_fail">配對失敗（%1$s）。請重新打開配對視窗。</string>
     <string name="ch_pair">配對</string>
-    <string name="ch_alert">需要你處理</string>
     <string name="n_wd_title">請打開無線偵錯</string>
     <string name="n_wd_text">SplitAudio 連不上這支手機的偵錯服務。請連上 WiFi，並到開發者選項打開「無線偵錯」。</string>
     <string name="s_need_pair">請先在 App 完成一次性設定</string>

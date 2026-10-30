@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- INTERNET is kept for this stage only: the app and VolKeyService still talk to the routing helper over TCP 127.0.0.1:47821 (Route.ask).
-         It is removed in the next stage, when that control channel moves to a LocalSocket. Nothing is ever sent off the phone. -->
-    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- No INTERNET permission: the app and VolKeyService reach the routing helper over a local (abstract) socket, which needs none. Nothing is ever sent off the phone. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
     <application>
+        <!-- the monitor that starts the router when Bluetooth is connected and music plays -->
+        <service android:name=".MonitorService" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="per-app audio routing monitor"/>
+        </service>
         <!-- volume keys (accessibility); not in the play flavor -->
         <service android:name=".VolKeyService" android:exported="true" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter><action android:name="android.accessibilityservice.AccessibilityService"/></intent-filter>

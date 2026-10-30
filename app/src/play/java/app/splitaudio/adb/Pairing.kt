@@ -73,7 +73,7 @@ object Pairing {
     /** 依目前狀態組配對通知（FOUND 時帶輸入框） */
     fun buildNotif(c: Context): Notification {
         channels(c)
-        val b = Notification.Builder(c, CH_PAIR).setSmallIcon(android.R.drawable.ic_lock_silent_mode_off)
+        val b = Notification.Builder(c, CH_PAIR).setSmallIcon(R.drawable.ic_stat_route)
             .setContentTitle(c.getString(R.string.n_pair_title)).setOngoing(true).setOnlyAlertOnce(true)
         when (st) {
             St.FOUND -> {
@@ -111,7 +111,7 @@ object Pairing {
         if (now - lastAlert < 600_000) return
         lastAlert = now
         channels(c)
-        val n = Notification.Builder(c, CH_ALERT).setSmallIcon(android.R.drawable.ic_lock_silent_mode_off)
+        val n = Notification.Builder(c, CH_ALERT).setSmallIcon(R.drawable.ic_stat_route)
             .setContentTitle(title).setContentText(text).setStyle(Notification.BigTextStyle().bigText(text)).setAutoCancel(true)
             .setContentIntent(PendingIntent.getActivity(c, 1, Intent(c, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)).build()
         try { c.getSystemService(NotificationManager::class.java).notify(3, n) } catch (_: Exception) {}

@@ -1,6 +1,7 @@
 package app.splitaudio
 
 import android.content.Context
+import android.content.pm.ServiceInfo
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -21,6 +22,9 @@ object Dist {
 
     /** 有沒有無障礙音量鍵（VolKeyService）；Play 審核對無障礙很嚴，play 版不放 */
     val hasVolKey = false
+
+    /** 前景服務類型（MonitorService、PairService）；要跟 manifest 宣告的一樣。play＝connectedDevice（跟藍牙／WiFi 裝置連線有關；manifest 有 CHANGE_WIFI_MULTICAST_STATE） */
+    val fgsType = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
 
     /** 主畫面的「一次性設定」區塊（內建 ADB 4 步引導） */
     fun setupSection(a: MainActivity, parent: LinearLayout): SetupSection? = PlaySetup(a, parent)
