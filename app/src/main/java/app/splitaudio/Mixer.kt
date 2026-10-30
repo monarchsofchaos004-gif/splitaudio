@@ -35,10 +35,10 @@ object Mixer {
     /** 背景執行緒叫：部署＋寫設定＋起／更新 mixer。回最後一行結果。 */
     @Synchronized fun apply(c: Context): String {
         Route.deploy(c)?.let { return it }
-        if (!hasAny(c)) return Backends.run(Route.sh("mixstop"), 15).second.trim()
+        if (!hasAny(c)) return Backends.run(Route.sh(c, "mixstop"), 15).second.trim()
         val w = Backends.writeFile("/data/local/tmp/approute.volpkg", text(all(c)).toByteArray())
         if (w.first != 0) return "vol_fail:${w.first} ${w.second.take(60)}"
-        return Backends.run(Route.sh("mixer"), 30).second.trim().lines().lastOrNull().orEmpty()
+        return Backends.run(Route.sh(c, "mixer"), 30).second.trim().lines().lastOrNull().orEmpty()
     }
 
     /** 有設定但 mixer 沒在跑（例：手機重開過）→ 起來。背景執行緒叫。 */
@@ -49,8 +49,8 @@ object Mixer {
     }
 
     /** 現在正在出聲的 App 的 uid；讀不到回空集合。背景執行緒叫。 */
-    fun playingUids(): Set<Int> {
-        val r = Backends.run(Route.sh("players"), 15)
+    fun playingUids(c: Context): Set<Int> {
+        val r = Backends.run(Route.sh(c, "players"), 15)
         if (r.first != 0) return emptySet()
         return r.second.lines().mapNotNull { it.trim().toIntOrNull() }.toSet()
     }

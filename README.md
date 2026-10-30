@@ -27,7 +27,7 @@ Samsung-only). SplitAudio keeps **the music app on Bluetooth and sends every oth
 | shell 權限怎麼來 / Shell access | [Shizuku](https://shizuku.rikka.app/) | Shizuku，沒有就用內建 ADB 無線偵錯 / Shizuku, otherwise the built-in ADB client (Wireless debugging, one-time pairing) |
 | 功能 / Features | 全部免費 / everything free | 簡單模式免費；自訂模式與每個 App 音量是 Pro（買斷，裝好有 7 天試用；購買功能之後的版本開放）/ Simple mode free; custom mode and per-app volume are Pro (one-time purchase, 7-day trial; purchasing comes in a later version) |
 | 音量鍵（無障礙服務）/ Volume keys (accessibility) | 有（Android 13 以上）/ yes (Android 13+) | 沒有 / no |
-| `INTERNET` 權限 / permission | **沒有 / none** | 有，只用來連這支手機自己的 adbd / yes, only to reach this phone's own adbd |
+| `INTERNET` 權限 / permission | 有，只用在本機 `127.0.0.1` 的指令口，沒有任何資料離開手機 / yes, only for the helper's local control port on `127.0.0.1`; no data leaves the phone | 有，連這支手機自己的 adbd 和本機指令口，沒有任何資料離開手機 / yes, to reach this phone's own adbd and the local control port; no data leaves the phone |
 
 需求 / Requirements: Android 12（API 31）以上；音量鍵功能要 Android 13 以上（要讀系統的 VolumeInfo）。 Android 12 or newer; the volume keys need Android 13 or newer (they read the system's VolumeInfo).
 
@@ -99,7 +99,7 @@ The ticked apps stay on Bluetooth, everything else plays on the speaker. The def
                          registers a system AudioPolicy:
                            RENDER mix, rule = RULE_MATCH_UID(<every app except the music apps>)
                            device = built-in speaker
-                         local socket @app.splitaudio.route (state / volume keys; the peer's uid is checked)
+                         control port 127.0.0.1:47821 (state / volume keys; every connection needs the app's token and the right uid)
 ```
 - shell 身分有 `MODIFY_AUDIO_ROUTING`，所以能註冊系統層的路由規則；有些廠牌 ROM 不理 App 自己指定的輸出裝置，但系統規則有效。
   The shell user holds `MODIFY_AUDIO_ROUTING`, so it can register a system-level routing policy. Some OEM ROMs ignore an
@@ -111,11 +111,18 @@ The ticked apps stay on Bluetooth, everything else plays on the speaker. The def
   The app only detects "Bluetooth + music playing", deploys the helper via Shizuku (or the Play build's built-in ADB; skipped when nothing
   changed, by a fingerprint in `approute.ver`) and starts it; the helper is detached with `setsid`, so it keeps running even if the app is
   killed. It exits by itself after Bluetooth is gone for 2 min or the music app has been silent for 10 min.
-- **指令口**：App 和小程式用本機 socket（abstract namespace `app.splitaudio.route`）溝通，不走網路，所以 fdroid 版不需要網路權限。小程式會檢查連進來的 uid：
-  只有啟動它的那個 App（啟動指令帶 `SPLITAUDIO_UID`）、shell 和 root 會得到回答，別的 App 一律 `denied`。除錯：`sh /data/local/tmp/approute.sh ask state`。
-  **Control channel**: the app and the helper talk over a local socket (abstract namespace `app.splitaudio.route`), not the network, so the fdroid build
-  needs no network permission. The helper checks the uid of every connection: only the app that started it (its start command carries `SPLITAUDIO_UID`),
-  the shell user and root get an answer; any other app gets `denied`. Debugging: `sh /data/local/tmp/approute.sh ask state`.
+- **指令口**：App 和小程式用本機 TCP（只綁 `127.0.0.1:47821`，網路上連不到）溝通。任何有 `INTERNET` 權限的 App 都連得上本機埠，所以每個連線要過兩關：
+  ① 第一行必須是 `auth <token>`——token 是 App 自己產生的 32 字元隨機碼（`SecureRandom`），只存在 App 的私有儲存空間，啟動指令經環境變數 `SPLITAUDIO_TOKEN` 交給小程式，
+  小程式另存一份 `/data/local/tmp/approute.token`（權限 0600、shell 擁有，其他 App 讀不到）給除錯用；② 小程式查 `/proc/net/tcp`／`tcp6`，確認對方連線的 uid
+  是啟動它的那個 App（啟動指令帶 `SPLITAUDIO_UID`）、shell 或 root。兩關任一不過就回 `denied` 並斷線，其他 App 連得進埠也問不到任何東西。
+  因此**兩個版本都需要 `INTERNET` 權限**，但只用在這支手機自己身上，沒有任何資料離開手機。除錯：`sh /data/local/tmp/approute.sh ask state`。
+  **Control channel**: the app and the helper talk over local TCP, bound to `127.0.0.1:47821` only (not reachable from the network). Any app with the `INTERNET`
+  permission can connect to a loopback port, so every connection has to pass two checks: (1) its first line must be `auth <token>` — the token is 32 random characters
+  (`SecureRandom`) the app makes itself and keeps in its private storage; the start command hands it to the helper in the environment (`SPLITAUDIO_TOKEN`), and the helper
+  also keeps a copy in `/data/local/tmp/approute.token` (mode 0600, owned by the shell user, so no app can read it) for debugging; (2) the helper looks the connection up in
+  `/proc/net/tcp` / `tcp6` and checks that its owner uid is the app that started it (its start command carries `SPLITAUDIO_UID`), the shell user or root.
+  A connection that fails either check gets `denied` and is closed, so another app can reach the port but gets nothing out of it. That is why **both builds need
+  the `INTERNET` permission** — used on this phone only; no data leaves the phone. Debugging: `sh /data/local/tmp/approute.sh ask state`.
 
 ## 安裝 / Install
 > 從 0.2.1 起改用正式金鑰簽名；裝過更早測試版的要先解除安裝再裝。
@@ -151,15 +158,16 @@ gradle testFdroidDebugUnitTest testPlayDebugUnitTest   # JVM unit tests of both 
 gradle assembleFdroidRelease                            # fdroid build, release APK (unsigned unless you set up signing)
 gradle bundlePlayRelease                                # play build, Android App Bundle
 ```
-單元測試也會編進並測試 `route/AppRoute.java` 裡的純函式（音量格數、指令口的 uid 規則、檔案讀取）。The unit tests also compile and test the pure functions in `route/AppRoute.java`.
+單元測試也會編進並測試 `route/AppRoute.java`：純函式（音量格數、指令口的 token／uid 規則、`/proc/net/tcp` 解析、檔案讀取），以及在真的本機連線上跑一遍指令口。The unit tests also compile `route/AppRoute.java` and test its pure functions (volume steps, the control port's token / uid rules, the `/proc/net/tcp` parser, file readers) and the control port itself on real loopback sockets.
 play 版的內建 ADB 函式庫（libadb-android）從 JitPack 下載，只有 play 版會用到。The play build's built-in ADB library (libadb-android) comes from JitPack and only the play build uses it.
 GitHub Actions 每次 push 都會從原始碼編出 APK（含路由小程式）。CI builds the APKs (including the helper dex) from source on every push.
 
 ## 隱私 / Privacy
-不連外網、不收集任何資料。fdroid 版**沒有 `INTERNET` 權限**（App 和小程式用本機 socket 溝通）；play 版有，但只用來連這支手機自己的 adbd（內建 ADB）。
-無障礙服務（fdroid 版）只攔音量鍵、只讀前景 App 的套件名稱，不讀畫面文字。
-No network access and no data collection. The fdroid build has **no `INTERNET` permission** (the app and its helper talk over a local socket); the play build has it
-only to reach this phone's own adbd (built-in ADB). The accessibility service (fdroid build) only filters volume keys and reads the foreground package name;
+不連外網、不收集任何資料，沒有任何資料離開手機。兩個版本都有 `INTERNET` 權限，但只用在這支手機自己身上：App 和小程式之間的本機（`127.0.0.1`）指令口（要帶 App 自己的隨機 token、而且對方 uid 要是本 App，其他 App 連不進），
+以及 play 版連這支手機自己的 adbd（內建 ADB）。無障礙服務（fdroid 版）只攔音量鍵、只讀前景 App 的套件名稱，不讀畫面文字。
+No data leaves the phone and nothing is collected. Both builds have the `INTERNET` permission, but it is only used on this phone itself: the local (`127.0.0.1`) control port
+between the app and its helper (every connection needs the app's own random token and must come from the app's uid, so other apps cannot use it), and, in the play build,
+the connection to this phone's own adbd (built-in ADB). The accessibility service (fdroid build) only filters volume keys and reads the foreground package name;
 it does not read screen text. See [SECURITY.md](SECURITY.md).
 
 ## 幫忙翻譯 / Help translate

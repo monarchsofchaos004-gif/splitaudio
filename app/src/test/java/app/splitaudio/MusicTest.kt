@@ -48,10 +48,15 @@ class MusicTest {
         assertEquals(Music.DEFAULT, line!!.groupValues[1].trim().split(Regex("\\s+")).toSet())
     }
 
-    @Test fun script_readsTheUsersMusicFileAndKeepsItsControlSocketUid() {
+    @Test fun script_readsTheUsersMusicFileAndHandsOverTheControlTokenAndUid() {
         val sh = listOf("src/main/assets/approute.sh", "app/src/main/assets/approute.sh").map(::File).first { it.exists() }.readText()
         assertTrue(sh.contains("approute.music"))
         assertTrue(sh.contains("SPLITAUDIO_UID"))
+        assertTrue(sh.contains("SPLITAUDIO_TOKEN"))
+        assertTrue(sh.contains("approute.token"))
+        assertTrue("the token file must be private to the shell user", sh.contains("umask 077") && sh.contains("chmod 600 \$D/approute.token"))
+        assertEquals("settoken runs right before each router launch (start and startmap), after the already-running check",
+            2, Regex("(?m)^    settoken\\n    CLASSPATH=").findAll(sh).count())
         assertTrue(sh.contains("ask) shift;"))
     }
 }

@@ -18,6 +18,6 @@ class DistTest {
         assertNotNull("MonitorService has no foregroundServiceType in the fdroid manifest", m)
         assertEquals("specialUse", m!!.groupValues[1])
         assertTrue(xml.contains("android.permission.FOREGROUND_SERVICE_SPECIAL_USE"))
-        assertFalse("the fdroid build must not ask for INTERNET", xml.contains("android.permission.INTERNET\""))
+        assertTrue("the fdroid build needs INTERNET for the helper's control port on 127.0.0.1", xml.contains("android.permission.INTERNET\""))
     }
 }

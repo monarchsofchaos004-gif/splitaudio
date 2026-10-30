@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
-    <!-- INTERNET: the built-in ADB client talks to this phone's own adbd over a TCP socket (127.0.0.1 / the phone's own Wi-Fi address). No data leaves the phone. -->
+    <!-- INTERNET: the built-in ADB client talks to this phone's own adbd over a TCP socket (127.0.0.1 / the phone's own Wi-Fi address), and the app
+         talks to the routing helper's control port (TCP 127.0.0.1:47821; token + uid checked). No data leaves the phone. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Foreground service type "connectedDevice" (MonitorService, PairService): it needs this permission and, on Android 14+, one of the
          CHANGE_NETWORK_STATE / CHANGE_WIFI_STATE / CHANGE_WIFI_MULTICAST_STATE permissions (the last one is declared below) -->

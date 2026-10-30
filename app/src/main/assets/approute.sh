@@ -3,8 +3,11 @@
 # Usage: sh /data/local/tmp/approute.sh start|startmap|stop|status|multifocus on|off|state|mixer|mixstop|players|ask <command>
 #   startmap = Custom mode: $D/approute.pkgmap (written by the app, lines "speaker|bt|wired:pkg,pkg") -> uids -> AppRoute map
 #   ask      = send one control command to the running router (state | mode | vol up|down <package>) and print its answer
-# The app puts its own uid in the environment (SPLITAUDIO_UID=<uid> sh approute.sh ...): the router started here inherits it
-#   (setsid / nohup keep the environment) and only answers that uid, the shell user and root on its control socket.
+# The app puts its own uid and its control token in the environment (SPLITAUDIO_UID=<uid> SPLITAUDIO_TOKEN=<token> sh approute.sh ...):
+#   the router started here inherits both (setsid / nohup keep the environment). It listens on 127.0.0.1:47821 and only serves
+#   connections that begin with "auth <token>" and come from that uid, the shell user or root. start / startmap also write the token to
+#   $D/approute.token (mode 0600, owned by the shell user, so no app can read it) for "ask". The per-app volume process (mixer) has no
+#   control port, so it only inherits the environment.
 D=/data/local/tmp; LOG=$D/approute.log
 # Music apps: audio from these stays on Bluetooth; routing is active only while one of them plays.
 #   The app writes the user's choice to $D/approute.music (one package name per line); no file, or nothing valid in it = these two.
@@ -14,6 +17,18 @@ pid(){ for p in $(pgrep -f "app_process /system/bin AppRoute"); do grep -q mixer
 mixpid(){ pgrep -f "[A]ppRoute mixer" | head -1; }   # [A]: never match a shell whose own command line has the words
 # Running helpers keep appending to $LOG, so a log over 1 MB is cut in place (same file) to its last 300 lines; called when a helper starts.
 trimlog(){ S=$(wc -c < $LOG 2>/dev/null); [ "${S:-0}" -gt 1048576 ] && { tail -n 300 $LOG > $LOG.tmp && cat $LOG.tmp > $LOG; rm -f $LOG.tmp; }; return 0; }
+# The control token (32 hex characters from the app). Written to $D/approute.token with mode 0600 and exported for the router that is
+# launched next. A router started by hand without a usable one gets a fresh random token, so "approute.sh ask" still works for the shell user.
+# Called only right before a router is launched (never when one is already running, so the file always matches the running router).
+settoken(){
+  T="$SPLITAUDIO_TOKEN"
+  case "$T" in *[!0-9a-f]*) T="" ;; esac
+  [ "${#T}" = 32 ] || T=$(head -c 16 /dev/urandom 2>/dev/null | od -An -tx1 | tr -d ' \n')
+  [ "${#T}" = 32 ] || T=$(tr -d '\n-' < /proc/sys/kernel/random/uuid 2>/dev/null)
+  ( umask 077; printf '%s' "$T" > $D/approute.token )
+  chmod 600 $D/approute.token
+  SPLITAUDIO_TOKEN="$T"; export SPLITAUDIO_TOKEN
+}
 case "$1" in
   start)
     trimlog
@@ -25,6 +40,7 @@ case "$1" in
     # Every app uid except the music apps (including work-profile / second-space uids); system uids (<10000) untouched.
     # User-installed apps (-3) first, so they are always inside the routing limit.
     U=$( { pm list packages -3 -U; pm list packages -U; } | sed 's/.*uid://' | tr ',' '\n' | awk -v m="$M" 'BEGIN{n=split(m,a,",");for(i=1;i<=n;i++)x[a[i]]=1} ($1%100000)>=10000 && !($1 in x) && !($1 in seen){seen[$1]=1;print}' | tr '\n' ' ')
+    settoken
     CLASSPATH=$D/approute.dex setsid nohup app_process /system/bin AppRoute "$M" $U >> $LOG 2>&1 < /dev/null &
     sleep 2; echo "started pid=$(pid)"; tail -2 $LOG ;;
   startmap)
@@ -40,6 +56,7 @@ case "$1" in
     done < $D/approute.pkgmap
     chmod 644 $D/approute.map.new; mv -f $D/approute.map.new $D/approute.map
     [ -s $D/approute.map ] || { echo "empty map"; exit 1; }
+    settoken
     CLASSPATH=$D/approute.dex setsid nohup app_process /system/bin AppRoute map $D/approute.map >> $LOG 2>&1 < /dev/null &
     sleep 2; echo "started pid=$(pid)"; tail -2 $LOG ;;
   stop) P=$(pid); [ -n "$P" ] && kill $P; echo "stopped" ;;
@@ -61,7 +78,7 @@ case "$1" in
     sleep 1; echo "mixer started pid=$(mixpid)" ;;
   mixstop) rm -f $D/approute.vol; sleep 2; P=$(mixpid); [ -n "$P" ] && kill $P; echo "mixer stopped" ;;
   players) CLASSPATH=$D/approute.dex app_process /system/bin AppRoute players ;;
-  # talk to the running router as the shell user (debugging, scripts): sh approute.sh ask state
+  # talk to the running router as the shell user (debugging, scripts): sh approute.sh ask state (AppRoute reads $D/approute.token itself)
   ask) shift; CLASSPATH=$D/approute.dex app_process /system/bin AppRoute ask "$*" ;;
   # "A video doesn't pause the music" (Android multi audio focus); see AppRoute.java.
   #   on = the user agreed (writes approute.mf_ok, removes approute.nomf), off = declined (the other way round); neither file = not decided yet

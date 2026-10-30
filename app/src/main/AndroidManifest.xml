@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Shared by both flavors. Flavor-specific parts: src/fdroid (VolKeyService; MonitorService with the specialUse foreground service type)
-         and src/play (MonitorService with connectedDevice; built-in ADB: pairing service, INTERNET, extra permissions).
-         No INTERNET here: the app talks to its routing helper over a local socket, which needs no permission. -->
+         and src/play (MonitorService with connectedDevice; built-in ADB: pairing service, extra permissions).
+         INTERNET is declared in each flavor's own manifest: both need it for the control port 127.0.0.1:47821 of the routing helper
+         (token + uid checked, nothing leaves the phone), the play flavor also for its built-in ADB client. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>

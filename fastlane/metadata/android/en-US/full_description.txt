@@ -20,9 +20,9 @@ Permissions
 - Accessibility service (optional): only filters the volume keys and reads the foreground app's package name. It does not read screen text.
 - Notifications and a foreground service: for the "routing on" status notification and the background monitor.
 - Start at boot: to bring the monitor back after a reboot.
-- No Internet permission: the app and its helper talk over a local socket that only the app, the shell user and root can use.
+- Internet permission: used only for a control port on 127.0.0.1 between the app and its helper on the same phone. Every connection must carry the app's own random token and come from the app itself, so other apps cannot use it. Nothing is ever sent off the phone.
 
 Privacy
-No network access (the app does not even have the Internet permission), no analytics, no ads, no tracking, no data collection.
+Nothing leaves your phone: the Internet permission is only used for 127.0.0.1 (the app talking to its own helper). No analytics, no ads, no tracking, no data collection.
 
 Open source (MIT license).

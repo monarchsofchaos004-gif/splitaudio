@@ -18,9 +18,9 @@
 //        CLASSPATH=/data/local/tmp/approute.dex app_process /system/bin AppRoute map /data/local/tmp/approute.map
 //        CLASSPATH=/data/local/tmp/approute.dex app_process /system/bin AppRoute multifocus on|off|state
 //        CLASSPATH=/data/local/tmp/approute.dex app_process /system/bin AppRoute ask "<command>"   (asks a running router as the shell user)
-// Control channel (0.5): a running router listens on the abstract local socket "app.splitaudio.route" (nothing on the network).
-//   Every connection is checked with the uid of the process on the other end: only the app that started the router
-//   (env SPLITAUDIO_UID), the shell user (2000) and root answer, everybody else gets "denied".
+// Control channel (0.5): a running router listens on 127.0.0.1:47821 (TCP, loopback only). Every connection must start with
+//   "auth <token>" (the random token the app made, env SPLITAUDIO_TOKEN) and must come from the app that started the router
+//   (env SPLITAUDIO_UID), the shell user (2000) or root (looked up in /proc/net/tcp); everybody else gets "denied".
 import android.media.*;
 import android.os.Looper;
 import java.lang.reflect.*;
@@ -352,18 +352,32 @@ public class AppRoute {
         } catch (Throwable e) { return ""; }
     }
 
-    // Control channel and volume keys. The app (status, volume keys) talks to the running router over the abstract local socket
-    //   "app.splitaudio.route": nothing on the network, so the app needs no INTERNET permission. Every connection is checked with
-    //   the uid of the process on the other end (SO_PEERCRED): root, the shell user and the app that started this router
-    //   (env SPLITAUDIO_UID, set by the app in the start command) are served, everybody else gets "denied" and is closed.
-    //   One command per line: state -> on/off; mode -> map/legacy;
-    //   vol up|down <package> -> ok <percent> / pass (app not routed to the speaker, or rule off).
-    //   Debug only: with env SPLITAUDIO_TCP=1 the old plain TCP port 127.0.0.1:47821 is opened too (no peer check possible).
-    static final String SOCK = "app.splitaudio.route";
-    static final int VOL_PORT = 47821;   // debug only (see above)
+    // Control channel and volume keys. The app (status, volume keys) talks to the running router over a TCP port bound to 127.0.0.1
+    //   only (not reachable from the network). Every app that has the INTERNET permission can connect to a loopback port, so each
+    //   connection has to pass two checks before its command is even looked at:
+    //   1. token: the first line must be "auth <token>". The token is made by the app (32 random characters, kept in its private
+    //      storage) and handed over in the environment (SPLITAUDIO_TOKEN) by approute.sh, which also writes it to
+    //      /data/local/tmp/approute.token (mode 0600, shell only) for "AppRoute ask".
+    //   2. uid: the owner of the connecting socket (looked up by its source port in /proc/net/tcp6 and /proc/net/tcp) must be the app
+    //      that started this router (env SPLITAUDIO_UID), the shell user (2000) or root. At start the router tries the lookup on a
+    //      connection to itself: where that works (uidEnforced) a connection it cannot find is refused too (a client that hangs up
+    //      right after sending would otherwise slip through); where it does not work at all (a ROM that hides those files from the
+    //      shell user) the token alone decides, and that is logged at start.
+    //   Anything else gets "denied" and is closed. After a good "auth" line one command line is read:
+    //   state -> on/off; mode -> map/legacy; vol up|down <package> -> ok <percent> / pass (app not routed to the speaker, or rule off).
+    static final int VOL_PORT = 47821;   // 127.0.0.1 only
     static final int VOL_STEPS = 15;     // the volume keys move the speaker volume in about this many steps, whatever the device's index range
+    static final String TOKEN_FILE = "/data/local/tmp/approute.token";
     static final int OWNER_UID = parseUid(System.getenv("SPLITAUDIO_UID"));
-    static int lastDeniedUid = -2;       // log a refused uid once, not on every attempt
+    static final int UID_UNKNOWN = -1, UID_AMBIGUOUS = -2;   // results of the peer uid lookup that are not a uid
+    static final java.util.regex.Pattern WHITESPACE = java.util.regex.Pattern.compile("\\s+");
+    static final int MAX_CONN = 8;       // connections served at the same time; more are dropped at once
+    static final int MAX_LINE = 512;     // longest line accepted from a client
+    static String controlToken = null;   // what this router accepts after "auth" (null = the port is not opened at all)
+    static String lastDenied = "";       // a refusal is logged once, not on every attempt
+    static volatile boolean uidEnforced = false;   // the uid lookup works on this device (self test at start): a connection it cannot find is refused
+    static final Object CMD_LOCK = new Object();   // commands run one at a time (a volume key press reads the volume, then sets it)
+    static final java.util.concurrent.atomic.AtomicInteger activeConn = new java.util.concurrent.atomic.AtomicInteger();
 
     static int parseUid(String s) {
         try { return s == null ? -1 : Integer.parseInt(s.trim()); } catch (NumberFormatException e) { return -1; }
@@ -375,59 +389,215 @@ public class AppRoute {
     static int clampIdx(int idx, int step, boolean up, int min, int max) { return Math.max(min, Math.min(max, idx + (up ? step : -step))); }
     static int percent(int idx, int max) { return max <= 0 ? 0 : idx * 100 / max; }
 
-    static void startServers() {
-        Thread vt = new Thread(AppRoute::volServer); vt.setDaemon(true); vt.start();
-        if ("1".equals(System.getenv("SPLITAUDIO_TCP"))) {
-            Thread tt = new Thread(AppRoute::tcpServer); tt.setDaemon(true); tt.start();
-            log("debug: plain TCP control port 127.0.0.1:" + VOL_PORT + " is open (no peer check)");
+    // ---- check 1: the token ----
+    /** A usable token: 16..128 letters and digits (the app makes 32 hex characters). Returns it trimmed, or null when it is not usable. */
+    static String validToken(String t) {
+        if (t == null) return null;
+        t = t.trim();
+        if (t.length() < 16 || t.length() > 128) return null;
+        for (int i = 0; i < t.length(); i++) {
+            char c = t.charAt(i);
+            if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))) return null;
         }
+        return t;
+    }
+
+    /** The token an "auth <token>" line presents (exactly one space, no other blanks); null when the line is anything else */
+    static String authToken(String line) {
+        if (line == null) return null;
+        String l = line.trim();
+        if (!l.startsWith("auth ")) return null;
+        String t = l.substring(5);
+        if (t.isEmpty()) return null;
+        for (int i = 0; i < t.length(); i++) if (Character.isWhitespace(t.charAt(i))) return null;
+        return t;
+    }
+
+    /** Same token? Compared in constant time, so the answer time does not tell how many leading characters were right. */
+    static boolean tokenMatches(String presented, String expected) {
+        if (presented == null || expected == null || expected.isEmpty()) return false;
+        return java.security.MessageDigest.isEqual(presented.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                                                   expected.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    static String readTokenFile(java.io.File f) {
+        try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.FileReader(f))) {
+            String l = r.readLine();
+            return l == null ? null : l.trim();
+        } catch (Throwable e) { return null; }
+    }
+
+    /** The token to accept: env SPLITAUDIO_TOKEN (set by approute.sh), else the token file; null when neither holds a usable one */
+    static String loadToken() {
+        String t = validToken(System.getenv("SPLITAUDIO_TOKEN"));
+        return t != null ? t : validToken(readTokenFile(new java.io.File(TOKEN_FILE)));
+    }
+
+    // ---- check 2: the uid on the other end ----
+    /** The lines of a /proc/net/tcp* file that mention the port as ":XXXX" (hex, the kernel writes capitals); empty when the file cannot be read.
+     *  A phone has hundreds of sockets and this runs for every request, so everything else is dropped while reading. */
+    static java.util.List<String> readLines(String path, int port) {
+        java.util.ArrayList<String> l = new java.util.ArrayList<>();
+        String up = String.format(java.util.Locale.ROOT, ":%04X", port), lo = up.toLowerCase(java.util.Locale.ROOT);
+        try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.FileReader(path))) {
+            for (String x; (x = r.readLine()) != null; ) if (x.contains(up) || x.contains(lo)) l.add(x);
+        } catch (Throwable e) { /* unreadable: the caller treats it as "not found" */ }
+        return l;
+    }
+
+    /** The port of a /proc/net/tcp address field ("0100007F:9C40" -> 40000); -1 when it cannot be read */
+    static int hexPort(String addr) {
+        int i = addr.lastIndexOf(':');
+        if (i < 0) return -1;
+        try { return Integer.parseInt(addr.substring(i + 1), 16); } catch (NumberFormatException e) { return -1; }
+    }
+
+    /** Is the address of a /proc/net/tcp (8 hex digits, 127.x.x.x ends in 7F) or /proc/net/tcp6 (32 digits: ::1 or ::ffff:127.x.x.x) field loopback? */
+    static boolean loopback(String addr) {
+        int i = addr.lastIndexOf(':');
+        if (i < 0) return false;
+        String ip = addr.substring(0, i).toUpperCase(java.util.Locale.ROOT);
+        if (ip.length() == 8) return ip.endsWith("7F");
+        if (ip.length() == 32) return ip.equals("00000000000000000000000001000000")
+            || (ip.startsWith("0000000000000000FFFF0000") && ip.endsWith("7F"));
+        return false;
+    }
+
+    /** The uid that owns the client end of a loopback connection, from the lines of /proc/net/tcp or /proc/net/tcp6: the entry whose local
+     *  port is clientPort and whose remote port is serverPort, both ends loopback, not TIME_WAIT (those lines always say uid 0).
+     *  UID_UNKNOWN when there is no such entry, UID_AMBIGUOUS when several entries disagree. */
+    static int uidOfConnection(java.util.List<String> lines, int clientPort, int serverPort) {
+        int found = UID_UNKNOWN;
+        for (String line : lines) {
+            String[] f = WHITESPACE.split(line.trim());
+            if (f.length < 8 || !f[0].endsWith(":")) continue;          // the header line and anything odd
+            if (f[3].equals("06")) continue;                             // TIME_WAIT
+            if (hexPort(f[1]) != clientPort || hexPort(f[2]) != serverPort) continue;
+            if (!loopback(f[1]) || !loopback(f[2])) continue;
+            long uid;
+            try { uid = Long.parseLong(f[7]); } catch (NumberFormatException e) { continue; }
+            if (uid < 0 || uid > Integer.MAX_VALUE) continue;
+            if (found == UID_UNKNOWN) found = (int) uid;
+            else if (found != uid) return UID_AMBIGUOUS;
+        }
+        return found;
+    }
+
+    /** null = let the connection in, otherwise why not. peer = [peerUid] result; enforced = the lookup works on this device, so "not found" is a refusal too */
+    static String uidProblem(int peer, int owner, boolean enforced) {
+        if (peer == UID_UNKNOWN) return enforced ? "peer not found in /proc/net/tcp*" : null;
+        if (peer == UID_AMBIGUOUS) return "peer uid ambiguous";
+        return allowed(peer, owner) ? null : "uid " + peer;
+    }
+
+    /** Uid of the process on the other end of an accepted connection (IPv6 table first: Java sockets are IPv6 sockets, 127.0.0.1 shows up there as ::ffff:127.0.0.1) */
+    static int peerUid(java.net.Socket s) {
+        int client = s.getPort(), server = s.getLocalPort();
+        int uid = uidOfConnection(readLines("/proc/net/tcp6", client), client, server);
+        return uid != UID_UNKNOWN ? uid : uidOfConnection(readLines("/proc/net/tcp", client), client, server);
+    }
+
+    // ---- the server ----
+    /** Can the uid lookup find a loopback connection of this very process here? (the same kind of Java socket the app uses; a few tries in case
+     *  a stranger's connection is accepted instead of ours) */
+    static boolean selfTestUidLookup(java.net.ServerSocket ss) {
+        for (int i = 0; i < 3; i++) {
+            try (java.net.Socket c = new java.net.Socket()) {
+                c.connect(new java.net.InetSocketAddress("127.0.0.1", ss.getLocalPort()), 1000);
+                ss.setSoTimeout(1000);
+                try (java.net.Socket a = ss.accept()) {
+                    if (a.getPort() == c.getLocalPort()) return peerUid(a) >= 0;
+                }
+            } catch (Throwable e) { return false; }
+            finally { try { ss.setSoTimeout(0); } catch (Throwable e) {} }
+        }
+        return false;
+    }
+
+    static void startServers() {
+        controlToken = loadToken();
+        if (controlToken == null) { log("control port closed: no usable SPLITAUDIO_TOKEN in the environment or in " + TOKEN_FILE); return; }
+        Thread vt = new Thread(AppRoute::volServer); vt.setDaemon(true); vt.start();
     }
 
     static void volServer() {
-        try (android.net.LocalServerSocket ss = new android.net.LocalServerSocket(SOCK)) {
-            log("control socket @" + SOCK + (OWNER_UID >= 0 ? ", owner uid " + OWNER_UID : ", shell only"));
+        try (java.net.ServerSocket ss = new java.net.ServerSocket(VOL_PORT, 8, java.net.InetAddress.getByName("127.0.0.1"))) {
+            uidEnforced = selfTestUidLookup(ss);
+            log("control port 127.0.0.1:" + VOL_PORT + (OWNER_UID >= 0 ? ", owner uid " + OWNER_UID : ", shell and root only")
+                + (uidEnforced ? ", uid checked in /proc/net/tcp*" : ", /proc/net/tcp* cannot be used to find the uid here: the token alone decides"));
             while (true) {
-                try (android.net.LocalSocket s = ss.accept()) {
-                    int peer = s.getPeerCredentials().getUid();
-                    if (!allowed(peer, OWNER_UID)) {
-                        if (peer != lastDeniedUid) { lastDeniedUid = peer; log("control: denied uid " + peer); }
-                        s.getOutputStream().write("denied\n".getBytes()); s.getOutputStream().flush();
-                        continue;
-                    }
-                    s.setSoTimeout(1500);
-                    String line = new java.io.BufferedReader(new java.io.InputStreamReader(s.getInputStream())).readLine();
-                    String out = volCmd(line == null ? "" : line.trim());
-                    s.getOutputStream().write((out + "\n").getBytes()); s.getOutputStream().flush();
-                } catch (Throwable e) { log("control conn err " + e); }
+                final java.net.Socket s = ss.accept();
+                if (activeConn.incrementAndGet() > MAX_CONN) { activeConn.decrementAndGet(); closeQuietly(s); continue; }
+                Thread t = new Thread(() -> { try { serve(s, OWNER_UID, controlToken, uidEnforced); } finally { activeConn.decrementAndGet(); } });
+                t.setDaemon(true); t.start();
             }
         } catch (Throwable e) { log("control server err " + e); }
     }
 
-    static void tcpServer() {
-        try (java.net.ServerSocket ss = new java.net.ServerSocket(VOL_PORT, 8, java.net.InetAddress.getByName("127.0.0.1"))) {
-            while (true) {
-                try (java.net.Socket s = ss.accept()) {
-                    s.setSoTimeout(1500);
-                    String line = new java.io.BufferedReader(new java.io.InputStreamReader(s.getInputStream())).readLine();
-                    String out = volCmd(line == null ? "" : line.trim());
-                    s.getOutputStream().write((out + "\n").getBytes()); s.getOutputStream().flush();
-                } catch (Throwable e) { log("tcp conn err " + e); }
+    static void closeQuietly(java.net.Socket s) { try { s.close(); } catch (Throwable e) {} }
+
+    /** One line (up to '\n', a trailing '\r' is left to the caller's trim) read byte by byte, so nothing after it is consumed and no client
+     *  can make the router buffer more than max characters. null on end of stream, timeout, or a longer line. */
+    static String readLineLimited(java.io.InputStream in, int max) {
+        try {
+            StringBuilder sb = new StringBuilder();
+            for (int c; (c = in.read()) != -1; ) {
+                if (c == '\n') return sb.toString();
+                if (sb.length() >= max) return null;
+                sb.append((char) c);
             }
-        } catch (Throwable e) { log("tcp server err " + e); }
+        } catch (java.io.IOException e) { /* timeout or reset: treated like no line */ }
+        return null;
     }
 
-    // "AppRoute ask <command>": sends one command line to the running router as the calling user (shell) and prints the answer.
-    //   For debugging and scripts (approute.sh ask state); the app connects to the socket itself.
-    static void askMain(String cmd) {
-        String r = null; int rc = 0;
-        android.net.LocalSocket s = new android.net.LocalSocket();
+    /** Serves one control connection: token, uid, one command, one answer. owner, expected token and enforced are parameters so that tests can use their own. */
+    static void serve(java.net.Socket s, int owner, String expected, boolean enforced) {
         try {
-            s.connect(new android.net.LocalSocketAddress(SOCK, android.net.LocalSocketAddress.Namespace.ABSTRACT));
+            s.setSoTimeout(1500);
+            java.io.InputStream in = new java.io.BufferedInputStream(s.getInputStream(), 1024);
+            String presented = authToken(readLineLimited(in, MAX_LINE));
+            if (expected == null || presented == null || !tokenMatches(presented, expected)) { refuse(s, "bad or missing token"); return; }
+            String why = uidProblem(peerUid(s), owner, enforced);   // only after a good token: a client without it costs no /proc reads
+            if (why != null) { refuse(s, why); return; }
+            String line = readLineLimited(in, MAX_LINE);
+            String out;
+            synchronized (CMD_LOCK) { out = volCmd(line == null ? "" : line.trim()); }
+            s.getOutputStream().write((out + "\n").getBytes()); s.getOutputStream().flush();
+        } catch (Throwable e) { log("control conn err " + e); }
+        finally { closeQuietly(s); }
+    }
+
+    /** "denied" and goodbye. The client has usually sent its command already; closing with that still unread would turn into a reset that can
+     *  swallow the answer, so the rest of what it sent (a little, for a short time) is read and thrown away first. */
+    static void refuse(java.net.Socket s, String why) {
+        if (!why.equals(lastDenied)) { lastDenied = why; log("control: denied (" + why + ")"); }
+        try {
+            s.getOutputStream().write("denied\n".getBytes()); s.getOutputStream().flush();
+            s.shutdownOutput();
+            s.setSoTimeout(300);
+            byte[] junk = new byte[1024];
+            long end = System.currentTimeMillis() + 500; int total = 0;
+            while (total < 4096 && System.currentTimeMillis() < end) { int n = s.getInputStream().read(junk); if (n <= 0) break; total += n; }
+        } catch (Throwable e) { /* the client is gone: nothing to do */ }
+    }
+
+    // "AppRoute ask <command>": sends one command line to the running router and prints the answer. It runs as the shell user and reads the
+    //   token from the file approute.sh wrote (nobody else can read that file). For debugging and scripts (approute.sh ask state).
+    static String askRouter(int port, String token, String cmd) throws java.io.IOException {
+        try (java.net.Socket s = new java.net.Socket()) {
+            s.connect(new java.net.InetSocketAddress("127.0.0.1", port), 2000);
             s.setSoTimeout(3000);
-            s.getOutputStream().write((cmd + "\n").getBytes()); s.getOutputStream().flush();
-            r = new java.io.BufferedReader(new java.io.InputStreamReader(s.getInputStream())).readLine();
-        } catch (Throwable e) { r = "err " + e; rc = 2; }
-        finally { try { s.close(); } catch (Throwable e) {} }
+            s.getOutputStream().write(("auth " + token + "\n" + cmd + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            s.getOutputStream().flush();
+            return new java.io.BufferedReader(new java.io.InputStreamReader(s.getInputStream())).readLine();
+        }
+    }
+
+    static void askMain(String cmd) {
+        String token = validToken(readTokenFile(new java.io.File(TOKEN_FILE)));
+        if (token == null) { System.out.println("err no token in " + TOKEN_FILE + " (was the router started with approute.sh?)"); System.exit(2); return; }
+        String r = null; int rc = 0;
+        try { r = askRouter(VOL_PORT, token, cmd); } catch (Throwable e) { r = "err " + e; rc = 2; }
         System.out.println(r == null ? "no_reply" : r);
         if (rc != 0) System.exit(rc);
     }

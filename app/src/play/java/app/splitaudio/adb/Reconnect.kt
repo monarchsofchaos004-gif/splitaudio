@@ -26,7 +26,7 @@ object Reconnect {
         if (busy) return
         busy = true
         try {
-            val act = SetupLogic.reconnect(inputs(c), Route.running())
+            val act = SetupLogic.reconnect(inputs(c), Route.running(c))
             when (act) {
                 SetupLogic.Action.NONE -> {}
                 SetupLogic.Action.CONNECT, SetupLogic.Action.ENABLE_WD_THEN_CONNECT -> {

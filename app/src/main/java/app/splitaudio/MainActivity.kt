@@ -79,7 +79,7 @@ class MainActivity : Activity() {
         liveCard.addView(LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             addView(btn("▶ " + getString(R.string.btn_start), Color.WHITE, 1f, C_GREEN) { Thread { Route.start(this@MainActivity) }.start() })
-            addView(btn("■ " + getString(R.string.btn_stop), Color.WHITE, 1f, C_RED) { Thread { Route.stop() }.start() })
+            addView(btn("■ " + getString(R.string.btn_stop), Color.WHITE, 1f, C_RED) { Thread { Route.stop(this@MainActivity) }.start() })
         })
         tvLast = text("", 11f, Color.argb(220, 255, 255, 255)).apply { setPadding(dp(4), dp(2), 0, 0) }
         liveCard.addView(tvLast)
@@ -202,7 +202,7 @@ class MainActivity : Activity() {
         Thread {
             Thread.sleep(600)
             val acc = Dist.hasVolKey && (Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: "").contains("$packageName/")
-            val s = Route.ask("state")
+            val s = Route.ask(this, "state")
             val be = Backends.current()
             val shzAlive = ShizukuBackend.alive(); val shzGranted = ShizukuBackend.granted()
             val conn = if (be == null) getString(R.string.v_none) else be.name + " " + getString(if (be.alive()) R.string.v_connected else R.string.v_disconnected)

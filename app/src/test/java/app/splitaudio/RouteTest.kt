@@ -3,21 +3,79 @@ package app.splitaudio
 import org.junit.Assert.*
 import org.junit.Test
 
-/** Route 的純邏輯：給 approute.sh 的指令字串（帶 uid）、路由回答的判讀、部署指紋。 */
+/** Route 的純邏輯：給 approute.sh 的指令字串（帶 uid 和 token）、token 的產生與格式、路由回答的判讀、部署指紋。
+ *  跟真的路由程式對話（token／uid 兩關）的測試在 ControlChannelTest（Java，預設套件）。 */
 class RouteTest {
-    @Test fun cmd_putsTheAppUidInFrontOfEveryScriptCall() {
-        assertEquals("SPLITAUDIO_UID=10234 sh /data/local/tmp/approute.sh start", Route.cmd(10234, "start"))
-        assertEquals("SPLITAUDIO_UID=10234 sh /data/local/tmp/approute.sh multifocus on", Route.cmd(10234, "multifocus on"))
+    private val tok = "0123456789abcdef0123456789abcdef"
+
+    @Test fun cmd_putsTheAppUidAndTokenInFrontOfEveryScriptCall() {
+        assertEquals("SPLITAUDIO_UID=10234 SPLITAUDIO_TOKEN=$tok sh /data/local/tmp/approute.sh start", Route.cmd(10234, tok, "start"))
+        assertEquals("SPLITAUDIO_UID=10234 SPLITAUDIO_TOKEN=$tok sh /data/local/tmp/approute.sh multifocus on", Route.cmd(10234, tok, "multifocus on"))
         for (sub in listOf("start", "startmap", "stop", "mixer", "mixstop", "multifocus on", "multifocus off", "players"))
-            assertTrue(sub, Route.cmd(1010123, sub).startsWith("SPLITAUDIO_UID=1010123 sh /data/local/tmp/approute.sh $sub"))
+            assertTrue(sub, Route.cmd(1010123, tok, sub).startsWith("SPLITAUDIO_UID=1010123 SPLITAUDIO_TOKEN=$tok sh /data/local/tmp/approute.sh $sub"))
     }
 
-    @Test fun sh_alwaysCarriesTheVariable() = assertTrue(Route.sh("stop").startsWith("SPLITAUDIO_UID="))
+    @Test fun cmd_refusesATokenThatCouldBreakTheShellLine() {
+        val bad = listOf("", "abc", tok + "0", tok.substring(1), tok.uppercase(), tok.dropLast(1) + ";", tok.dropLast(1) + " ", "$(id)".padEnd(32, 'a'), tok.dropLast(1) + "\n")
+        for (t in bad) assertThrows(t, IllegalArgumentException::class.java) { Route.cmd(1, t, "start") }
+    }
 
-    @Test fun isAlive_anyAnswerButDenied() {
-        assertTrue(Route.isAlive("on")); assertTrue(Route.isAlive("off")); assertTrue(Route.isAlive("map"))
+    @Test fun newToken_is32LowercaseHexCharacters() {
+        repeat(50) {
+            val t = Route.newToken()
+            assertEquals(32, t.length)
+            assertTrue(t, t.all { it in '0'..'9' || it in 'a'..'f' })
+            assertTrue(Route.isValidToken(t))
+        }
+    }
+
+    @Test fun newToken_isNeverTheSameTwice() = assertEquals(200, (1..200).map { Route.newToken() }.toSet().size)
+
+    @Test fun newToken_takesItsBitsFromTheGivenRandom() {
+        assertEquals(Route.newToken(java.util.Random(42)), Route.newToken(java.util.Random(42)))
+        assertNotEquals(Route.newToken(java.util.Random(42)), Route.newToken(java.util.Random(43)))
+        val zero = object : java.util.Random() { override fun nextBytes(b: ByteArray) { b.fill(0) } }
+        assertEquals("0".repeat(32), Route.newToken(zero))                     // two hex digits per byte, leading zeros kept
+        val ff = object : java.util.Random() { override fun nextBytes(b: ByteArray) { b.fill(-1) } }
+        assertEquals("f".repeat(32), Route.newToken(ff))
+    }
+
+    @Test fun isValidToken_onlyTheFormatWeMake() {
+        assertTrue(Route.isValidToken(tok))
+        assertFalse(Route.isValidToken(null)); assertFalse(Route.isValidToken(""))
+        assertFalse(Route.isValidToken(tok.substring(1))); assertFalse(Route.isValidToken(tok + "0"))
+        assertFalse(Route.isValidToken(tok.uppercase()))
+        assertFalse(Route.isValidToken(tok.dropLast(1) + "g"))
+        assertFalse(Route.isValidToken(tok.dropLast(1) + "\n"))
+    }
+
+    @Test fun portMatchesTheDocumentedOne() = assertEquals(47821, Route.PORT)
+
+    @Test fun answerOf_separatesAnswersFromDenialsAndSilence() {
+        assertEquals("on", Route.answerOf("on").reply); assertEquals("", Route.answerOf("on").error)
+        assertEquals("legacy", Route.answerOf("legacy").reply)
+        assertNull(Route.answerOf("denied").reply); assertEquals(Route.DENIED, Route.answerOf("denied").error)
+        assertNull(Route.answerOf(null).reply); assertNotEquals(Route.DENIED, Route.answerOf(null).error)
+    }
+
+    @Test fun isAlive_onlyOnOrOff() {
+        assertTrue(Route.isAlive("on")); assertTrue(Route.isAlive("off"))
         assertFalse(Route.isAlive(null))
-        assertFalse(Route.isAlive(Route.DENIED))   // 別的 uid 起的舊路由：不是我們的
+        assertFalse(Route.isAlive(Route.DENIED))   // 別的 token／uid 起的舊路由：不是我們的
+        assertFalse(Route.isAlive("err"))          // 沒有 token 協定的舊路由把 auth 那行當指令回 err：不是我們這版的
+        assertFalse(Route.isAlive("")); assertFalse(Route.isAlive("map")); assertFalse(Route.isAlive("ON"))
+    }
+
+    @Test fun controlProblem_saysWhyTheRouterCannotBeReached() {
+        assertEquals("", Route.controlProblem(Route.Answer("on")))
+        assertEquals("", Route.controlProblem(Route.Answer("off")))
+        assertTrue(Route.controlProblem(Route.answerOf("denied")).contains("denied"))
+        assertTrue(Route.controlProblem(Route.answerOf("denied")).contains("Stop split"))
+        assertTrue(Route.controlProblem(Route.Answer(null, "failed to connect to /127.0.0.1 (port 47821)")).contains("no answer"))
+        assertTrue(Route.controlProblem(Route.Answer(null, "failed to connect to /127.0.0.1 (port 47821)")).contains("47821"))
+        assertTrue(Route.controlProblem(Route.answerOf(null)).contains("no answer"))
+        assertTrue(Route.controlProblem(Route.Answer("err")).contains("unexpected answer"))
+        assertTrue(Route.controlProblem(Route.Answer("err")).contains("err"))
     }
 
     @Test fun fingerprint_stableAndSensitive() {

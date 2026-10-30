@@ -1,51 +1,115 @@
 package app.splitaudio
 
 import android.content.Context
-import android.net.LocalSocket
-import android.net.LocalSocketAddress
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.net.InetSocketAddress
+import java.net.Socket
 import java.security.MessageDigest
+import java.security.SecureRandom
 
 /** 路由本體＝AppRoute（app_process 小程式，shell 身分註冊系統路由規則：音樂 App 以外的 App 走手機喇叭）。
- *  本 App 只負責：把 assets 裡的 approute.dex／approute.sh 經 [Backends]（Shizuku 或 Play 版內建 ADB）寫到 /data/local/tmp 並啟動，之後用本機指令口（abstract local socket "app.splitaudio.route"）溝通。
- *  指令口不走網路（App 不需要 INTERNET 權限）；路由程式會檢查連進來的 uid，只有本 App（啟動指令帶 SPLITAUDIO_UID）、shell、root 問得到答案。
+ *  本 App 只負責：把 assets 裡的 approute.dex／approute.sh 經 [Backends]（Shizuku 或 Play 版內建 ADB）寫到 /data/local/tmp 並啟動，之後用本機指令口 127.0.0.1:47821 溝通。
+ *  指令口只綁本機，但任何有 INTERNET 權限的 App 都連得上本機埠，所以每個連線要過兩關：第一行送 "auth <token>"（token＝本 App 自己產生的 32 字元隨機碼，只存在本 App 的私有儲存空間，
+ *  啟動路由時經環境變數交給它），而且路由程式會查 /proc/net/tcp 確認對方的 uid 是本 App（SPLITAUDIO_UID）、shell 或 root；不符一律回 "denied"。資料不出手機。
  *  AppRoute 用 setsid 脫離，本 App 被系統殺掉路由照跑；藍牙斷 2 分／音樂 10 分沒播它自己結束。
  *  簡單模式：音樂 App 清單先寫成 approute.music（[Music]），再 approute.sh start。
  *  自訂模式（0.3）：先把每個 App 的輸出寫成 approute.pkgmap，再用 approute.sh startmap 起「AppRoute map」。 */
 object Route {
-    const val SOCK = "app.splitaudio.route"
-    /** 路由程式對不是本 App 的 uid 的回答（例：重裝 App 後 uid 變了舊路由還在跑，或同時裝了另一個 SplitAudio 版本） */
+    /** 路由程式的本機指令口（只綁 127.0.0.1）；要跟 route/AppRoute.java 的 VOL_PORT 一樣（有單元測試對） */
+    const val PORT = 47821
+    private const val HOST = "127.0.0.1"
+    /** 路由程式對沒過關的連線（token 不對或 uid 不是本 App）的回答（例：重裝 App 後 token／uid 都變了舊路由還在跑，或同時裝了另一個 SplitAudio 版本） */
     const val DENIED = "denied"
     private const val D = "/data/local/tmp"
     @Volatile var lastStart = "none"
-    /** 最近一次 [ask] 失敗的原因（診斷用：例如指令口被系統安全策略擋下會是 Permission denied） */
+    /** 最近一次 [query] 沒拿到回答的原因（診斷用：[DENIED]＝路由在跑但不認我們；其他＝連不上／逾時…）；拿到回答就清空 */
     @Volatile var lastAskError = ""
+    @Volatile private var tokenCache: String? = null
+    private val tokenLock = Any()   // not Route's own monitor: start() holds that for up to a minute, and every ask() needs the token
 
-    /** 純字串（可單元測試）：經 shell 跑 approute.sh。前面帶本 App 的 uid，路由程式只回答這個 uid（和 shell、root）。 */
-    fun cmd(uid: Int, sub: String) = "SPLITAUDIO_UID=$uid sh $D/approute.sh $sub"
+    // ---- token ----
+
+    /** 純邏輯（可單元測試）：由 [rnd] 產生 token＝32 個小寫十六進位字元（128 位元；預設用 SecureRandom） */
+    fun newToken(rnd: java.util.Random = SecureRandom()): String {
+        val b = ByteArray(16); rnd.nextBytes(b)
+        return b.joinToString("") { "%02x".format(it) }
+    }
+
+    /** 純邏輯：token 長得對不對（會被放進給 shell 的指令列，所以只收我們自己產生的格式：32 個小寫十六進位字元） */
+    fun isValidToken(t: String?): Boolean = t != null && t.length == 32 && t.all { it in '0'..'9' || it in 'a'..'f' }
+
+    /** 本 App 的指令口 token：第一次需要時產生，存在私有 prefs "route"／"token"（allowBackup=false，不會被備份帶走）。清除 App 資料＝換新 token。 */
+    fun token(ctx: Context): String {
+        tokenCache?.let { return it }
+        synchronized(tokenLock) {
+            tokenCache?.let { return it }
+            val sp = ctx.applicationContext.getSharedPreferences("route", Context.MODE_PRIVATE)
+            var t = sp.getString("token", null)
+            if (!isValidToken(t)) { t = newToken(); sp.edit().putString("token", t).commit() }
+            tokenCache = t
+            return t!!
+        }
+    }
+
+    /** 純字串（可單元測試）：經 shell 跑 approute.sh。前面帶本 App 的 uid 和 token：路由程式只服務帶這個 token、而且來自這個 uid（和 shell、root）的連線。 */
+    fun cmd(uid: Int, token: String, sub: String): String {
+        require(isValidToken(token)) { "bad token" }   // 會進 shell 指令列：只放自己產生的固定格式
+        return "SPLITAUDIO_UID=$uid SPLITAUDIO_TOKEN=$token sh $D/approute.sh $sub"
+    }
 
     /** 跑 approute.sh 的指令字串（Shizuku／ADB 兩個後端都是 sh -c，前綴的環境變數都有效） */
-    fun sh(sub: String) = cmd(android.os.Process.myUid(), sub)
+    fun sh(ctx: Context, sub: String) = cmd(android.os.Process.myUid(), token(ctx), sub)
 
-    /** 問路由程式一句（state／mode／vol up|down 套件）。連不上回 null（原因存在 [lastAskError]）。 */
-    fun ask(cmd: String, timeoutMs: Int = 400): String? = try {
-        val s = LocalSocket()
-        try {
-            s.connect(LocalSocketAddress(SOCK, LocalSocketAddress.Namespace.ABSTRACT))
-            s.soTimeout = timeoutMs * 3
-            s.outputStream.write((cmd + "\n").toByteArray()); s.outputStream.flush()
-            BufferedReader(InputStreamReader(s.inputStream)).readLine()?.trim()
-        } finally { try { s.close() } catch (_: Exception) {} }
-    } catch (e: Exception) { lastAskError = (e.message ?: e.javaClass.simpleName).take(60); null }
+    // ---- 問路由程式 ----
 
-    /** 純邏輯（可單元測試）：路由程式有回答、而且不是「denied」＝這個路由是我們的、在跑 */
-    fun isAlive(reply: String?) = reply != null && reply != DENIED
+    /** 問一句的結果：[reply] 有值＝路由程式回答了；null＝沒拿到，[error] 是原因（[DENIED] 或連線錯誤的文字） */
+    class Answer(val reply: String?, val error: String = "")
 
-    fun running(): Boolean = isAlive(ask("state"))
-    fun ruleOn(): Boolean = ask("state") == "on"
-    /** 正在跑的路由是哪個模式："map"（自訂）／"legacy"（簡單；0.2 的舊路由不認得 mode 也當 legacy） */
-    fun mode(): String? = ask("mode")?.takeIf { it != DENIED }?.let { if (it == "map") "map" else "legacy" }
+    /** 純邏輯（可單元測試）：路由程式回的那一行 → [Answer]。沒有回覆（對方直接關線）和 "denied" 都算沒拿到回答。 */
+    fun answerOf(raw: String?): Answer = when (raw) {
+        null -> Answer(null, "no reply")
+        DENIED -> Answer(null, DENIED)
+        else -> Answer(raw)
+    }
+
+    /** 連到指令口問一句（純 IO、不碰 Context，所以單元測試可以對真的 AppRoute 跑）：先送 "auth <token>" 再送指令，讀一行回覆。連不上／逾時會丟例外。 */
+    fun exchange(token: String, cmd: String, timeoutMs: Int = 400, port: Int = PORT): String? {
+        require(!cmd.contains('\n') && !cmd.contains('\r')) { "one line only" }
+        return Socket().use { s ->
+            s.connect(InetSocketAddress(HOST, port), timeoutMs); s.soTimeout = timeoutMs * 3
+            s.getOutputStream().write(("auth $token\n$cmd\n").toByteArray()); s.getOutputStream().flush()
+            BufferedReader(InputStreamReader(s.getInputStream())).readLine()?.trim()
+        }
+    }
+
+    /** 問路由程式一句（state／mode／vol up|down 套件），結果帶原因。要在背景執行緒叫（網路 IO）。 */
+    fun query(ctx: Context, cmd: String, timeoutMs: Int = 400): Answer {
+        val a = try { answerOf(exchange(token(ctx), cmd, timeoutMs)) }
+                catch (e: Exception) { Answer(null, (e.message ?: e.javaClass.simpleName).take(60)) }
+        lastAskError = a.error
+        return a
+    }
+
+    /** 問路由程式一句。沒拿到回答（連不上、逾時、denied）回 null，原因存在 [lastAskError]。 */
+    fun ask(ctx: Context, cmd: String, timeoutMs: Int = 400): String? = query(ctx, cmd, timeoutMs).reply
+
+    /** 純邏輯（可單元測試）：對 "state" 的回答是 on／off＝這個路由是我們的、在跑。沒回答、denied（別的 token／uid 起的）、
+     *  或別的字（例如 0.4 以前沒有 token 的舊路由把 auth 那行當指令回 "err"）都不算——後兩種要重新部署／起新的。 */
+    fun isAlive(reply: String?) = reply == "on" || reply == "off"
+
+    /** 純邏輯：對 "state" 的回答不是 on／off 時，要寫進「上次啟動」的原因；正常（路由在跑）回空字串 */
+    fun controlProblem(a: Answer): String = when {
+        isAlive(a.reply) -> ""
+        a.reply != null -> " | unexpected answer on the control port: ${a.reply.take(30)}"
+        a.error == DENIED -> " | control port: denied (the running router was started with another token or for another uid; tap Stop split to end it)"
+        else -> " | no answer on the control port: ${a.error}"
+    }
+
+    fun running(ctx: Context): Boolean = isAlive(ask(ctx, "state"))
+    fun ruleOn(ctx: Context): Boolean = ask(ctx, "state") == "on"
+    /** 正在跑的路由是哪個模式："map"（自訂）／"legacy"（簡單）；沒拿到回答是 null */
+    fun mode(ctx: Context): String? = ask(ctx, "mode")?.let { if (it == "map") "map" else "legacy" }
 
     /** 純邏輯（可單元測試）：部署內容的指紋（sha256 十六進位）。檔名也算進去，兩個檔內容對調會不一樣。 */
     fun fingerprint(files: List<Pair<String, ByteArray>>): String {
@@ -78,17 +142,18 @@ object Route {
         }
         val v = Backends.writeFile("$D/approute.ver", ver.toByteArray())
         if (v.first != 0) return "deploy_fail:${v.first} ${v.second.take(60)}"
-        Backends.run(sh("stop"), 15)
+        Backends.run(sh(ctx, "stop"), 15)
         return null
     }
 
     /** 部署＋啟動（要在背景執行緒叫）。已在跑就不動。 */
     @Synchronized fun start(ctx: Context): String {
-        val st = ask("state")
-        if (isAlive(st)) return "already".also { lastStart = it }
+        val st = query(ctx, "state")
+        if (isAlive(st.reply)) return "already".also { lastStart = it }
         deploy(ctx)?.let { return it.also { lastStart = it } }
-        // st == DENIED：有路由在跑但它是別的 uid 起的（重裝前的舊路由，或同時裝了另一個 SplitAudio 版本）。不去殺它——兩個版本互殺會一直重啟、聲音一直閃；
+        // st.error == DENIED：有路由在跑但它是別的 token／uid 起的（重裝前的舊路由，或同時裝了另一個 SplitAudio 版本）。不去殺它——兩個版本互殺會一直重啟、聲音一直閃；
         // 舊路由藍牙斷 2 分／音樂停 10 分會自己結束，或按「停止分流」（stop 對任何 uid 起的都有效）。下面 approute.sh start 會回 already，結果文字會註明 denied。
+        // st.reply 是別的字（0.4 以前沒有 token 的舊路由會把 auth 那行當指令回 err）：上面的 deploy 內容有變會把它停掉，再起新的。
         val custom = Outputs.custom(ctx)
         if (custom) {
             if (!Outputs.hasAny(ctx)) return "no_apps".also { lastStart = it }
@@ -98,20 +163,16 @@ object Route {
             val w = Backends.writeFile("$D/approute.music", Music.text(Music.set(ctx)).toByteArray())
             if (w.first != 0) return "music_fail:${w.first} ${w.second.take(60)}".also { lastStart = it }
         }
-        val r = Backends.run(sh(if (custom) "startmap" else "start"), 45)
+        val r = Backends.run(sh(ctx, if (custom) "startmap" else "start"), 45)
         var res = "start rc=${r.first} " + r.second.trim().lines().lastOrNull().orEmpty().take(80)
-        if (hasPid(r.second)) {   // 路由程式起來了卻問不到它＝指令口有問題，把原因帶進結果（主畫面「上次啟動」會顯示）
-            val a = ask("state")
-            if (a == null) res += " | no answer on the control socket: $lastAskError"
-            else if (a == DENIED) res += " | control socket: denied (the running router was started for another uid; tap Stop split to end it)"
-        }
+        if (hasPid(r.second)) res += controlProblem(query(ctx, "state"))   // 路由程式起來了卻問不到它＝指令口有問題，把原因帶進結果（主畫面「上次啟動」會顯示）
         return res.also { lastStart = it }
     }
 
     /** 換模式／改了 App 輸出／改了音樂 App（背景執行緒叫）：停掉正在跑的路由，監看服務照新設定、有聲音時再起。 */
-    fun apply(ctx: Context) { stop(); MonitorService.ensure(ctx) }
+    fun apply(ctx: Context) { stop(ctx); MonitorService.ensure(ctx) }
 
-    fun stop(): String = Backends.run(sh("stop"), 15).second.trim()
+    fun stop(ctx: Context): String = Backends.run(sh(ctx, "stop"), 15).second.trim()
 
     /** 「開影片不打斷音樂」（Android 內建 multi audio focus）：這個系統設定 App 讀不到，經 [Backends] 讀。
      *  回 "on"／"off"／"off_user"（用戶按過關＝分流不會自動打開）／null（讀不到） */
@@ -124,6 +185,6 @@ object Route {
     /** 手動開／關（要在背景執行緒叫）。開＝用戶同意（之後分流會自動打開）；關＝用戶不要（分流不會再自動打開）。 */
     @Synchronized fun setMultiFocus(ctx: Context, on: Boolean): String {
         deploy(ctx)?.let { return it }
-        return Backends.run(sh("multifocus " + (if (on) "on" else "off")), 30).second.trim().lines().lastOrNull().orEmpty()
+        return Backends.run(sh(ctx, "multifocus " + (if (on) "on" else "off")), 30).second.trim().lines().lastOrNull().orEmpty()
     }
 }

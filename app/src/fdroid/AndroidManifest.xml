@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- No INTERNET permission: the app and VolKeyService reach the routing helper over a local (abstract) socket, which needs none. Nothing is ever sent off the phone. -->
+    <!-- INTERNET is used only for the local control port of the routing helper (TCP 127.0.0.1:47821, loopback only): the app and VolKeyService
+         connect to it. Every connection has to start with the app's own random token and come from this app's uid, so other apps cannot use the port.
+         No data leaves the phone. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
     <application>
         <!-- the monitor that starts the router when Bluetooth is connected and music plays -->

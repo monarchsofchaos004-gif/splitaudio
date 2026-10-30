@@ -43,22 +43,40 @@ class MfTest {
         assertFalse(Mf.needsAsk(Mf.OFF, "off"))
     }
 
-    @Test fun shouldNotify_firstTime() = assertTrue(Mf.shouldNotify(Mf.ASK, "off", 0L, t0))
+    @Test fun shouldNotify_firstTime() = assertTrue(Mf.shouldNotify(Mf.ASK, "off", 0L, t0, 0))
 
     @Test fun shouldNotify_notAgainWithinTenMinutes() {
-        assertFalse(Mf.shouldNotify(Mf.ASK, "off", t0, t0 + 1))
-        assertFalse(Mf.shouldNotify(Mf.ASK, "off", t0, t0 + 599_999))
-        assertTrue(Mf.shouldNotify(Mf.ASK, "off", t0, t0 + 600_000))
-        assertTrue(Mf.shouldNotify(Mf.ASK, "off", t0, t0 + 3_600_000))
+        assertFalse(Mf.shouldNotify(Mf.ASK, "off", t0, t0 + 1, 1))
+        assertFalse(Mf.shouldNotify(Mf.ASK, "off", t0, t0 + 599_999, 1))
+        assertTrue(Mf.shouldNotify(Mf.ASK, "off", t0, t0 + 600_000, 1))
+        assertTrue(Mf.shouldNotify(Mf.ASK, "off", t0, t0 + 3_600_000, 1))
     }
 
-    @Test fun shouldNotify_clockMovedBackwards_stillAllowed() = assertTrue(Mf.shouldNotify(Mf.ASK, "off", t0, t0 - 86_400_000L))
+    @Test fun shouldNotify_clockMovedBackwards_stillAllowed() = assertTrue(Mf.shouldNotify(Mf.ASK, "off", t0, t0 - 86_400_000L, 1))
 
     @Test fun shouldNotify_neverWhenDecidedOrAlreadyOn() {
-        assertFalse(Mf.shouldNotify(Mf.ON, "off", 0L, t0))
-        assertFalse(Mf.shouldNotify(Mf.OFF, "off", 0L, t0))
-        assertFalse(Mf.shouldNotify(Mf.ASK, "on", 0L, t0))
-        assertFalse(Mf.shouldNotify(Mf.ASK, "off_user", 0L, t0))
+        assertFalse(Mf.shouldNotify(Mf.ON, "off", 0L, t0, 0))
+        assertFalse(Mf.shouldNotify(Mf.OFF, "off", 0L, t0, 0))
+        assertFalse(Mf.shouldNotify(Mf.ASK, "on", 0L, t0, 0))
+        assertFalse(Mf.shouldNotify(Mf.ASK, "off_user", 0L, t0, 0))
+    }
+
+    @Test fun maxThreeNotifications() = assertEquals(3, Mf.MAX_NOTIFY)
+
+    @Test fun shouldNotify_stopsAfterThreeNotifications() {
+        // 三則發完就不再發（隔再久也不發）；之後只剩主畫面的決定卡（needsAsk 不受通知次數影響）
+        var sent = 0
+        var last = 0L
+        var now = t0
+        repeat(10) {
+            if (Mf.shouldNotify(Mf.ASK, "off", last, now, sent)) { sent++; last = now }
+            now += Mf.COOLDOWN_MS + 1
+        }
+        assertEquals(3, sent)
+        assertFalse(Mf.shouldNotify(Mf.ASK, "off", 0L, t0 + 10 * 86_400_000L, 3))
+        assertFalse(Mf.shouldNotify(Mf.ASK, "off", 0L, t0, 4))
+        assertTrue(Mf.shouldNotify(Mf.ASK, "off", 0L, t0, 2))
+        assertTrue(Mf.needsAsk(Mf.ASK, "off"))   // 決定卡照樣顯示
     }
 
     @Test fun cooldownIsTenMinutes() = assertEquals(600_000L, Mf.COOLDOWN_MS)

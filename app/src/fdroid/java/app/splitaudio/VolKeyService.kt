@@ -24,7 +24,7 @@ class VolKeyService : AccessibilityService() {
         if (Build.VERSION.SDK_INT < MIN_SDK) return
         Thread {
             while (alive) {
-                routeOn = Route.ask("state") == "on"
+                routeOn = Route.ask(this@VolKeyService, "state") == "on"
                 try { Thread.sleep(if (routeOn) 2000 else 4000) } catch (_: InterruptedException) { return@Thread }
             }
         }.apply { isDaemon = true }.start()
@@ -46,7 +46,7 @@ class VolKeyService : AccessibilityService() {
         consumed.add(k)
         val dir = if (k == KeyEvent.KEYCODE_VOLUME_UP) "up" else "down"
         Thread {
-            val r = Route.ask("vol $dir $fg")
+            val r = Route.ask(this, "vol $dir $fg")
             main.post {
                 if (r != null && r.startsWith("ok ")) Toast.makeText(this, getString(R.string.toast_vol, r.substring(3)), Toast.LENGTH_SHORT).show()
                 else try {   // 不是走喇叭的 App／規則剛好拿掉 → 這次按鍵已被攔，自己照原本調藍牙
