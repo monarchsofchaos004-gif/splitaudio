@@ -74,5 +74,15 @@
     <string name="mixer_hint">Drag to set an app\'s own volume; 🔊 / 🔇 mutes it. Apps playing now (▶) are listed first. 100% = left alone.</string>
     <string name="mixer_muted">muted</string>
     <string name="mixer_playing_n">Playing now: %1$d</string>
-    <string name="mixer_need_shizuku">Needs Shizuku (grant it on the main screen first).</string>
+    <string name="mixer_need_setup">Finish the setup on the main screen first.</string>
+    <string name="st_conn">Connection: %1$s</string>
+    <string name="v_connected">connected ✓</string>
+    <string name="v_disconnected">not connected</string>
+    <string name="v_none">none</string>
+    <string name="chip_needs_13">needs Android 13</string>
+    <string name="pro_title_left">Pro feature (trial: %1$d day(s) left)</string>
+    <string name="pro_title_over">Pro feature (trial ended)</string>
+    <string name="pro_msg">Choosing an output for each app and setting each app\'s volume are Pro features. A one-time purchase unlocks them (purchase will be available in a later version).</string>
+    <string name="pro_trial_left">Pro trial: %1$d day(s) left</string>
+    <string name="pro_trial_over">Pro trial ended</string>
 </resources>

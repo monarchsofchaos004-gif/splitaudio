@@ -20,34 +20,37 @@ object Mixer {
         e.apply()
     }
 
-    fun all(c: Context): Map<String, Int> =
-        sp(c).all.filter { !it.key.contains('#') && it.value is Int }.mapValues { it.value as Int }
+    fun all(c: Context): Map<String, Int> = valid(sp(c).all)
+
+    /** 純邏輯（可單元測試）：prefs 全部內容裡的「套件名＝音量」（排除 "套件#last" 這種輔助鍵、非整數的值） */
+    fun valid(raw: Map<String, *>): Map<String, Int> =
+        raw.filter { !it.key.contains('#') && it.value is Int }.mapValues { it.value as Int }
 
     fun hasAny(c: Context) = all(c).isNotEmpty()
 
-    private fun text(c: Context) =
-        all(c).entries.joinToString("") { "${it.key}=${String.format(Locale.US, "%.2f", it.value / 100f)}\n" }
+    /** approute.volpkg 內容：一個 App 一行「套件=0.35」（0＝靜音） */
+    fun text(m: Map<String, Int>) =
+        m.entries.joinToString("") { "${it.key}=${String.format(Locale.US, "%.2f", it.value / 100f)}\n" }
 
     /** 背景執行緒叫：部署＋寫設定＋起／更新 mixer。回最後一行結果。 */
     @Synchronized fun apply(c: Context): String {
         Route.deploy(c)?.let { return it }
-        if (!hasAny(c)) return Shz.run("sh /data/local/tmp/approute.sh mixstop", 15).second.trim()
-        val f = "/data/local/tmp/approute.volpkg"
-        val w = Shz.run("cat > $f.new && chmod 644 $f.new && mv -f $f.new $f", 15, text(c).toByteArray())
-        if (w.first != 0) return "vol_fail:${w.first}"
-        return Shz.run("sh /data/local/tmp/approute.sh mixer", 30).second.trim().lines().lastOrNull().orEmpty()
+        if (!hasAny(c)) return Backends.run("sh /data/local/tmp/approute.sh mixstop", 15).second.trim()
+        val w = Backends.writeFile("/data/local/tmp/approute.volpkg", text(all(c)).toByteArray())
+        if (w.first != 0) return "vol_fail:${w.first} ${w.second.take(60)}"
+        return Backends.run("sh /data/local/tmp/approute.sh mixer", 30).second.trim().lines().lastOrNull().orEmpty()
     }
 
     /** 有設定但 mixer 沒在跑（例：手機重開過）→ 起來。背景執行緒叫。 */
     fun ensure(c: Context) {
-        if (!hasAny(c) || !Shz.granted()) return
+        if (!hasAny(c) || Backends.current() == null) return
         // [A] 寫法:這條 sh 自己的命令列也含這串字,不加方括號 pgrep 會找到自己 → 永遠以為在跑
-        if (Shz.run("pgrep -f '[A]ppRoute mixer' >/dev/null && echo y", 10).second.trim() != "y") apply(c)
+        if (Backends.run("pgrep -f '[A]ppRoute mixer' >/dev/null && echo y", 10).second.trim() != "y") apply(c)
     }
 
     /** 現在正在出聲的 App 的 uid；讀不到回空集合。背景執行緒叫。 */
     fun playingUids(): Set<Int> {
-        val r = Shz.run("sh /data/local/tmp/approute.sh players", 15)
+        val r = Backends.run("sh /data/local/tmp/approute.sh players", 15)
         if (r.first != 0) return emptySet()
         return r.second.lines().mapNotNull { it.trim().toIntOrNull() }.toSet()
     }

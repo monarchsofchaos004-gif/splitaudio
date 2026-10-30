@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- INTERNET is kept for this stage only: the app and VolKeyService still talk to the routing helper over TCP 127.0.0.1:47821 (Route.ask).
+         It is removed in the next stage, when that control channel moves to a LocalSocket. Nothing is ever sent off the phone. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <application>
+        <!-- volume keys (accessibility); not in the play flavor -->
+        <service android:name=".VolKeyService" android:exported="true" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter><action android:name="android.accessibilityservice.AccessibilityService"/></intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/volkey"/>
+        </service>
+    </application>
+</manifest>

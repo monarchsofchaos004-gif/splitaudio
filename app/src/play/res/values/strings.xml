@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Play flavor only: built-in ADB setup (pairing, notifications, licenses). Shared strings live in src/main. -->
+    <string name="sec_setup">One-time setup</string>
+    <string name="setup_done_title">Setup complete ✓</string>
+    <string name="setup_done_d">SplitAudio reconnects by itself after a reboot whenever you are on Wi-Fi.</string>
+    <string name="setup_redo">Show the setup steps again</string>
+    <string name="chip_done">done ✓</string>
+    <string name="chip_todo">to do</string>
+    <string name="chip_next">next</string>
+    <string name="step1_title">Developer options</string>
+    <string name="step1_d">Settings → About phone → tap “Build number” 7 times, then come back here.</string>
+    <string name="btn_open_about">Open About phone</string>
+    <string name="btn_open_dev">Open Developer options</string>
+    <string name="step2_title">Wireless debugging</string>
+    <string name="step2_d">Connect to Wi-Fi, then turn on “Wireless debugging” in Developer options (tick “Always allow on this network” if asked).</string>
+    <string name="btn_open_wd">Open Wireless debugging</string>
+    <string name="need_wifi">Not on Wi-Fi yet.</string>
+    <string name="step3_title">Pair</string>
+    <string name="step3_d">Tap “Start pairing”. On the Wireless debugging page tap “Pair device with pairing code”. A notification appears: type the 6-digit code into it (or type it here).</string>
+    <string name="btn_pair">Start pairing</string>
+    <string name="pair_code_hint">6-digit pairing code</string>
+    <string name="btn_pair_send">Pair</string>
+    <string name="pair_wait">Looking for the pairing dialog… (tap “Pair device with pairing code”)</string>
+    <string name="pair_found">Pairing dialog found. Enter the code.</string>
+    <string name="pair_busy">Pairing…</string>
+    <string name="pair_ok">Paired ✓</string>
+    <string name="pair_fail">Pairing failed: %1$s</string>
+    <string name="pair_bad_code">The code must be 6 digits.</string>
+    <string name="pair_no_dialog">Open “Pair device with pairing code” first.</string>
+    <string name="step4_title">Connect</string>
+    <string name="step4_d">After pairing, the app connects and grants itself one setting permission (so it can switch Wireless debugging back on after a reboot).</string>
+    <string name="btn_connect">Connect now</string>
+    <string name="n_pair_title">SplitAudio pairing</string>
+    <string name="n_pair_wait">Waiting: on the Wireless debugging page, tap “Pair device with pairing code”.</string>
+    <string name="n_pair_enter">Enter the 6-digit pairing code shown in the dialog.</string>
+    <string name="n_pair_label">Pairing code</string>
+    <string name="n_pair_action">Enter code</string>
+    <string name="n_pair_busy">Pairing…</string>
+    <string name="n_pair_ok">Paired. Finishing setup…</string>
+    <string name="n_pair_fail">Pairing failed (%1$s). Open the pairing dialog again.</string>
+    <string name="ch_pair">Pairing</string>
+    <string name="ch_alert">Needs your attention</string>
+    <string name="n_wd_title">Turn on Wireless debugging</string>
+    <string name="n_wd_text">SplitAudio could not reach this phone\'s debugging service. Connect to Wi-Fi and turn on Wireless debugging in Developer options.</string>
+    <string name="s_need_pair">Finish the one-time setup in the app</string>
+    <string name="s_no_adb">Waiting for Wireless debugging (turn it on, on Wi-Fi)</string>
+    <string name="lic_title">Open-source licenses</string>
+    <string name="lic_btn">Open-source licenses</string>
+    <string name="sec_custom">Customize</string>
+    <string name="shz_hint">Shizuku is running on this phone. If you already use it, allow it here and skip the steps below.</string>
+    <string name="btn_grant_shizuku">Allow Shizuku</string>
+</resources>

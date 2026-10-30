@@ -15,9 +15,8 @@ import android.media.AudioPlaybackConfiguration
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
-import rikka.shizuku.Shizuku
 
-/** 常駐（前景通知）：聽「播放變化」「輸出裝置變化」→ 藍牙連著＋有音樂在播＋路由沒在跑 → 經 Shizuku 啟動 AppRoute。
+/** 常駐（前景通知）：聽「播放變化」「輸出裝置變化」→ 藍牙連著＋有音樂在播＋路由沒在跑 → 經 [Backends]（Shizuku 或 Play 版內建 ADB）啟動 AppRoute。
  *  沒有定時輪詢；只有藍牙連著時每 60 秒補查一次（防回呼漏掉）。啟動失敗 30 秒內不重試。
  *  自訂模式：有指定輸出的 App＋有任何聲音在播（本 App 看不到是誰在播，路由程式看得到）就起，不管藍牙；每 60 秒補查。 */
 class MonitorService : Service() {
@@ -41,9 +40,12 @@ class MonitorService : Service() {
             override fun onAudioDevicesAdded(a: Array<out AudioDeviceInfo>?) { h.postDelayed({ check("bt") }, 2500) }
             override fun onAudioDevicesRemoved(r: Array<out AudioDeviceInfo>?) { h.postDelayed({ check("bt") }, 2500) }
         }, h)
-        try { Shizuku.addBinderReceivedListenerSticky { h.post { check("shizuku") } } } catch (_: Throwable) {}
+        ShizukuBackend.onBinderReceived { h.post { check("shizuku") } }
+        Dist.onServiceCreate(this)
         tick()
     }
+
+    override fun onDestroy() { Dist.onServiceDestroy(this); super.onDestroy() }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int { h.post { check("start") }; return START_STICKY }
 
@@ -63,10 +65,10 @@ class MonitorService : Service() {
             val now = System.currentTimeMillis()
             if (now - lastTry < 30_000) return@Thread
             lastTry = now
-            if (!Shz.granted()) { setState(getString(if (Shz.alive()) R.string.s_need_grant else R.string.s_shizuku_down)); return@Thread }
+            if (Backends.current() == null) { setState(Dist.needSetupText(this)); return@Thread }
             val r = Route.start(this)
             Thread.sleep(2500)
-            setState(if (Route.ruleOn()) getString(R.string.s_split) else getString(R.string.s_result, r))
+            setState(if (Route.ruleOn()) getString(R.string.s_split) else Dist.startResultText(this, r))
         }.start()
     }
 
@@ -80,10 +82,10 @@ class MonitorService : Service() {
             val now = System.currentTimeMillis()
             if (now - lastTry < 30_000) return@Thread
             lastTry = now
-            if (!Shz.granted()) { setState(getString(if (Shz.alive()) R.string.s_need_grant else R.string.s_shizuku_down)); return@Thread }
+            if (Backends.current() == null) { setState(Dist.needSetupText(this)); return@Thread }
             val r = Route.start(this)
             Thread.sleep(2500)
-            setState(if (Route.ruleOn()) getString(R.string.s_split) else getString(R.string.s_result, r))
+            setState(if (Route.ruleOn()) getString(R.string.s_split) else Dist.startResultText(this, r))
         }.start()
     }
 
@@ -112,5 +114,7 @@ class MonitorService : Service() {
 
     companion object {
         fun ensure(c: Context) { try { c.startForegroundService(Intent(c, MonitorService::class.java)) } catch (_: Exception) {} }
+        /** 後端剛接回／配對完成：叫監看服務立刻重新檢查（有聲音該分流就起路由） */
+        fun kick(c: Context) { ensure(c) }
     }
 }

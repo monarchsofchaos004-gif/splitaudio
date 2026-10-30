@@ -3,6 +3,7 @@ package app.splitaudio
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.media.AudioManager
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
@@ -10,7 +11,8 @@ import android.view.accessibility.AccessibilityEvent
 import android.widget.Toast
 
 /** 音量鍵：分流規則掛著＋前景是走喇叭的 App → 調「手機喇叭」（問 AppRoute 本機指令口）；
- *  音樂 App／桌面／系統介面照常調藍牙。規則沒掛＝完全不攔。 */
+ *  音樂 App／桌面／系統介面照常調藍牙。規則沒掛＝完全不攔。
+ *  Android 13（API 33）起才有系統的 VolumeInfo（路由程式靠它調喇叭音量）→ API 33 以前不輪詢、不攔任何鍵。 */
 class VolKeyService : AccessibilityService() {
     private val skip = setOf("app.morphe.android.apps.youtube.music", "com.google.android.apps.youtube.music",
         "com.miui.home", "com.android.systemui", "com.android.launcher3")
@@ -22,6 +24,7 @@ class VolKeyService : AccessibilityService() {
 
     override fun onServiceConnected() {
         MonitorService.ensure(this)
+        if (Build.VERSION.SDK_INT < MIN_SDK) return
         Thread {
             while (alive) {
                 routeOn = Route.ask("state") == "on"
@@ -34,7 +37,7 @@ class VolKeyService : AccessibilityService() {
     override fun onInterrupt() {}
 
     override fun onKeyEvent(e: KeyEvent?): Boolean {
-        if (e == null) return false
+        if (e == null || Build.VERSION.SDK_INT < MIN_SDK) return false
         val k = e.keyCode
         if (k != KeyEvent.KEYCODE_VOLUME_UP && k != KeyEvent.KEYCODE_VOLUME_DOWN) return false
         if (e.action == KeyEvent.ACTION_UP) return consumed.remove(k)
@@ -55,5 +58,10 @@ class VolKeyService : AccessibilityService() {
             }
         }.start()
         return true
+    }
+
+    companion object {
+        /** 音量鍵功能需要的最低 API（VolumeInfo） */
+        const val MIN_SDK = 33
     }
 }

@@ -25,7 +25,7 @@ jobs:
       - name: Android SDK components
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0" >/dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
 
       - name: Build routing helper (AppRoute.java -> approute.dex)
         run: sh route/build_dex.sh
@@ -34,20 +34,29 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      # CI builds a debug APK and an unsigned release APK. Releases only carry the release APK signed with the developer's key
-      # on the developer's own machine (the key never goes to CI), uploaded by hand.
-      - name: Build debug APK
-        run: gradle --no-daemon --console=plain assembleDebug
+      # Two flavors from one code base: fdroid (Shizuku only, all features free) and play (built-in ADB, no Shizuku needed).
+      - name: Unit tests
+        run: gradle --no-daemon --console=plain testFdroidDebugUnitTest testPlayDebugUnitTest
+
+      # CI builds the debug APKs of both flavors and an unsigned fdroid release APK. Releases only carry the release APK signed with
+      # the developer's key on the developer's own machine (the key never goes to CI), uploaded by hand.
+      - name: Build debug APKs
+        run: gradle --no-daemon --console=plain assembleFdroidDebug assemblePlayDebug
 
       - uses: actions/upload-artifact@v4
         with:
-          name: splitaudio-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
-
-      - name: Build release APK (unsigned; signed later on the developer's machine)
-        run: gradle --no-daemon --console=plain assembleRelease
+          name: splitaudio-fdroid-debug-apk
+          path: app/build/outputs/apk/fdroid/debug/app-fdroid-debug.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: splitaudio-release-unsigned
-          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          name: splitaudio-play-debug-apk
+          path: app/build/outputs/apk/play/debug/app-play-debug.apk
+
+      - name: Build fdroid release APK (unsigned; signed later on the developer's machine)
+        run: gradle --no-daemon --console=plain assembleFdroidRelease
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: splitaudio-fdroid-release-unsigned
+          path: app/build/outputs/apk/fdroid/release/app-fdroid-release-unsigned.apk

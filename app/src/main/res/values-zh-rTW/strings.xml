@@ -74,5 +74,15 @@
     <string name="mixer_hint">拉桿調這個 App 自己的音量；按 🔊／🔇 靜音。正在出聲的 App（▶）排最前面。100% ＝不動它。</string>
     <string name="mixer_muted">靜音</string>
     <string name="mixer_playing_n">正在出聲：%1$d 個</string>
-    <string name="mixer_need_shizuku">需要 Shizuku（先在主畫面授權）。</string>
+    <string name="mixer_need_setup">請先在主畫面完成設定。</string>
+    <string name="st_conn">連線方式：%1$s</string>
+    <string name="v_connected">已連線 ✓</string>
+    <string name="v_disconnected">未連線</string>
+    <string name="v_none">無</string>
+    <string name="chip_needs_13">需要 Android 13</string>
+    <string name="pro_title_left">Pro 功能（試用剩 %1$d 天）</string>
+    <string name="pro_title_over">Pro 功能（試用已到期）</string>
+    <string name="pro_msg">每個 App 自己選輸出、每個 App 分開調音量是 Pro 功能。一次買斷即可解鎖（購買功能之後的版本開放）。</string>
+    <string name="pro_trial_left">Pro 試用：剩 %1$d 天</string>
+    <string name="pro_trial_over">Pro 試用已結束</string>
 </resources>

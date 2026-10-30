@@ -1,14 +1,18 @@
 package app.splitaudio
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
+import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -16,13 +20,17 @@ import android.widget.Switch
 import android.widget.TextView
 
 /** 狀態＋設定頁（字串在 res/values*，英文預設、繁中 values-zh-rTW）。
- *  上：狀態卡（分流中／等音樂／沒在跑，顏色跟著變）＋啟動／停止；① 必要設定：Shizuku、音量鍵（無障礙）；
- *  ② 客製化：簡單／自訂模式、每個 App 選輸出、開影片不打斷音樂。 */
+ *  上：（Play 版）一次性設定＝內建 ADB 引導；狀態卡（分流中／等音樂／沒在跑，顏色跟著變）＋啟動／停止；
+ *  ① 必要設定（fdroid 版）：Shizuku、音量鍵（無障礙）；
+ *  ② 客製化：簡單／自訂模式、每個 App 選輸出、每個 App 的音量、開影片不打斷音樂。
+ *  兩個版本的差異都收在 [Dist]（後端清單、Pro 是否一律開放、有沒有音量鍵、設定區塊）。 */
 class MainActivity : Activity() {
     private lateinit var liveCard: LinearLayout
     private lateinit var tvLive: TextView
     private lateinit var tvLiveSub: TextView
     private lateinit var tvLast: TextView
+    private lateinit var tvBackend: TextView
+    private lateinit var cusCard: LinearLayout
     private lateinit var shzChip: TextView
     private lateinit var shzBtn: Button
     private lateinit var accChip: TextView
@@ -33,8 +41,15 @@ class MainActivity : Activity() {
     private lateinit var mfSw: Switch
     private lateinit var tvMf: TextView
     private lateinit var tvModeDesc: TextView
+    private lateinit var tvPro: TextView
+    private var setup: SetupSection? = null
     @Volatile private var mf: String? = null
     private var mfBusy = false
+    private val ui = Handler(Looper.getMainLooper())
+    private var ticking = false
+    private val tickRun = object : Runnable {
+        override fun run() { if (ticking) { refreshSoon(); ui.postDelayed(this, 3000) } }
+    }
 
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
@@ -50,6 +65,9 @@ class MainActivity : Activity() {
         hero.addView(text(getString(R.string.hero_sub), 14f, Color.rgb(252, 228, 236)).apply { setPadding(0, dp(6), 0, 0) })
         root.addView(hero)
 
+        // Play 版：一次性設定（內建 ADB 引導）；fdroid 版沒有（null），改用下面「必要設定」的 Shizuku 那列
+        setup = Dist.setupSection(this, root)
+
         // 狀態卡（顏色跟著狀態）＋手動啟動／停止
         liveCard = card(C_GREY)
         tvLive = text("…", 20f, Color.WHITE, true)
@@ -62,31 +80,41 @@ class MainActivity : Activity() {
         })
         tvLast = text("", 11f, Color.argb(220, 255, 255, 255)).apply { setPadding(dp(4), dp(2), 0, 0) }
         liveCard.addView(tvLast)
+        tvBackend = text("", 11f, Color.argb(220, 255, 255, 255)).apply { setPadding(dp(4), dp(2), 0, 0); visibility = if (setup != null) View.VISIBLE else View.GONE }
+        liveCard.addView(tvBackend)
         root.addView(liveCard)
 
-        // ① 必要設定
-        val req = card(Color.WHITE)
-        req.addView(section(getString(R.string.sec_required), C_TEAL))
-        shzChip = chip(); shzBtn = btn(getString(R.string.btn_grant), C_ORANGE) { Shz.request() }
-        req.addView(row("🔑", getString(R.string.row_shizuku), getString(R.string.row_shizuku_d), shzChip, shzBtn))
-        req.addView(divider())
-        accChip = chip(); accBtn = btn(getString(R.string.btn_open), C_BLUE) { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
-        req.addView(row("🔊", getString(R.string.row_acc), getString(R.string.row_acc_d), accChip, accBtn))
-        root.addView(req)
+        // ① 必要設定：Shizuku（fdroid 版）、音量鍵（有 VolKeyService 的版本）
+        if (setup == null || Dist.hasVolKey) {
+            val req = card(Color.WHITE)
+            req.addView(section(getString(R.string.sec_required), C_TEAL))
+            if (setup == null) {
+                shzChip = chip(); shzBtn = btn(getString(R.string.btn_grant), C_ORANGE) { ShizukuBackend.request() }
+                req.addView(row("🔑", getString(R.string.row_shizuku), getString(R.string.row_shizuku_d), shzChip, shzBtn))
+            }
+            if (setup == null && Dist.hasVolKey) req.addView(divider())
+            if (Dist.hasVolKey) {
+                accChip = chip(); accBtn = btn(getString(R.string.btn_open), C_BLUE) { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+                req.addView(row("🔊", getString(R.string.row_acc), getString(R.string.row_acc_d), accChip, accBtn))
+            }
+            root.addView(req)
+        }
 
         // ② 客製化
-        val cus = card(Color.WHITE)
-        cus.addView(section(getString(R.string.sec_custom), C_PURPLE))
-        cus.addView(text(getString(R.string.mode_title), 15f, C_TEXT, true))
+        cusCard = card(Color.WHITE)
+        cusCard.addView(section(getString(R.string.sec_custom), C_PURPLE))
+        cusCard.addView(text(getString(R.string.mode_title), 15f, C_TEXT, true))
         segSimple = btn(getString(R.string.mode_simple), C_TEAL, 1f) { setMode(false) }
-        segCustom = btn(getString(R.string.mode_custom), C_PURPLE, 1f) { setMode(true) }
-        cus.addView(LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; addView(segSimple); addView(segCustom) })
+        segCustom = btn(getString(R.string.mode_custom), C_PURPLE, 1f) { if (requirePro()) setMode(true) }
+        cusCard.addView(LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; addView(segSimple); addView(segCustom) })
         tvModeDesc = text("", 13f, C_TEXT_2).apply { setPadding(dp(4), 0, dp(4), dp(4)) }
-        cus.addView(tvModeDesc)
-        appsBtn = btn("🎛️ " + getString(R.string.btn_apps), C_INDIGO) { startActivity(Intent(this, AppsActivity::class.java)) }
-        cus.addView(appsBtn)
-        cus.addView(btn("🔉 " + getString(R.string.btn_mixer), C_PINK) { startActivity(Intent(this, MixerActivity::class.java)) })
-        cus.addView(divider())
+        cusCard.addView(tvModeDesc)
+        appsBtn = btn("🎛️ " + getString(R.string.btn_apps), C_INDIGO) { if (requirePro()) startActivity(Intent(this, AppsActivity::class.java)) }
+        cusCard.addView(appsBtn)
+        cusCard.addView(btn("🔉 " + getString(R.string.btn_mixer), C_PINK) { if (requirePro()) startActivity(Intent(this, MixerActivity::class.java)) })
+        tvPro = text("", 12f, C_TEXT_2).apply { setPadding(dp(4), 0, dp(4), dp(2)); visibility = View.GONE }
+        cusCard.addView(tvPro)
+        cusCard.addView(divider())
         mfSw = Switch(this).apply {
             text = "🎬 " + getString(R.string.mf_title); textSize = 15f; setTextColor(C_TEXT); setTypeface(typeface, Typeface.BOLD)
             setPadding(0, dp(6), 0, dp(2))
@@ -95,18 +123,36 @@ class MainActivity : Activity() {
                 Thread { Route.lastStart = getString(R.string.mf_result, Route.setMultiFocus(this@MainActivity, on)); refreshSoon() }.start()
             }
         }
-        cus.addView(mfSw)
+        cusCard.addView(mfSw)
         tvMf = text("", 13f, C_TEXT_2).apply { setPadding(0, 0, 0, dp(4)) }
-        cus.addView(tvMf)
-        root.addView(cus)
+        cusCard.addView(tvMf)
+        root.addView(cusCard)
 
-        setContentView(ScrollView(this).apply {
+        setup?.addFooter(root)
+
+        val scroll = ScrollView(this).apply {
             background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(C_BG_TOP, C_BG_BOTTOM))
             addView(root)
-        })
+        }
+        setContentView(scroll)
+        Edge.apply(scroll, root)
     }
 
-    override fun onResume() { super.onResume(); refreshSoon() }
+    override fun onResume() {
+        super.onResume()
+        setup?.let { s ->
+            s.onResume { refreshSoon() }
+            // 一次性設定的每一步要自動偵測（使用者去設定頁回來就會自己打勾）→ 前景時每 3 秒查一次；fdroid 版不輪詢
+            ticking = true; ui.removeCallbacks(tickRun); ui.postDelayed(tickRun, 3000)
+        }
+        refreshSoon()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        ticking = false; ui.removeCallbacks(tickRun)
+        setup?.onPause()
+    }
 
     private fun setMode(custom: Boolean) {
         if (custom == Outputs.customFlag(this)) return
@@ -116,15 +162,35 @@ class MainActivity : Activity() {
         refreshSoon()
     }
 
-    private fun refreshSoon() {
+    /** Pro 功能（自訂模式、每個 App 的音量）的閘：未解鎖就跳說明，不進頁面。回 true＝可以繼續。 */
+    private fun requirePro(): Boolean {
+        if (Pro.unlocked(this)) return true
+        val left = Pro.trialDaysLeft(this)
+        AlertDialog.Builder(this)
+            .setTitle(if (left > 0) getString(R.string.pro_title_left, left) else getString(R.string.pro_title_over))
+            .setMessage(R.string.pro_msg).setPositiveButton(android.R.string.ok, null).show()
+        return false
+    }
+
+    internal fun refreshSoon() {
         Thread {
             Thread.sleep(600)
-            val acc = (Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: "").contains("$packageName/")
+            val acc = Dist.hasVolKey && (Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: "").contains("$packageName/")
             val s = Route.ask("state")
-            val alive = Shz.alive(); val granted = Shz.granted()
-            mf = if (granted) Route.multiFocusState() else null
+            val be = Backends.current()
+            val shzAlive = ShizukuBackend.alive(); val shzGranted = ShizukuBackend.granted()
+            val conn = if (be == null) getString(R.string.v_none) else be.name + " " + getString(if (be.alive()) R.string.v_connected else R.string.v_disconnected)
+            mf = if (be != null) Route.multiFocusState() else null
             val custom = Outputs.customFlag(this); val nApps = Outputs.all(this).size
+            val proLeft = if (Dist.proAlways || Pro.licensed(this)) -1 else Pro.trialDaysLeft(this)
+            val upd = setup?.poll()
             runOnUiThread {
+                upd?.invoke()
+                // 有一次性設定區塊的版本：設定完成（有可用的後端）才顯示分流功能；fdroid 版一直顯示
+                val ready = setup == null || be != null
+                liveCard.visibility = if (ready) View.VISIBLE else View.GONE
+                cusCard.visibility = if (ready) View.VISIBLE else View.GONE
+
                 val (live, color) = when (s) {
                     "on" -> Pair("🟢 " + getString(R.string.live_on), C_GREEN)
                     "off" -> Pair("🔵 " + getString(R.string.live_wait), C_BLUE)
@@ -134,24 +200,35 @@ class MainActivity : Activity() {
                 (liveCard.background as GradientDrawable).setColor(color)
                 tvLiveSub.text = if (custom && nApps > 0) getString(R.string.st_mode_custom, nApps) else getString(R.string.st_mode_simple)
                 tvLast.text = getString(R.string.st_last, Route.lastStart)
+                tvBackend.text = getString(R.string.st_conn, conn)
 
-                setChip(shzChip, if (granted) 1 else 0, getString(if (!alive) R.string.v_not_running else if (granted) R.string.v_granted else R.string.v_not_granted))
-                shzBtn.visibility = if (granted) android.view.View.GONE else android.view.View.VISIBLE
-                setChip(accChip, if (acc) 1 else 2, getString(if (acc) R.string.v_on else R.string.chip_recommended))
-                accBtn.visibility = if (acc) android.view.View.GONE else android.view.View.VISIBLE
+                if (setup == null) {
+                    setChip(shzChip, if (shzGranted) 1 else 0, getString(if (!shzAlive) R.string.v_not_running else if (shzGranted) R.string.v_granted else R.string.v_not_granted))
+                    shzBtn.visibility = if (shzGranted) View.GONE else View.VISIBLE
+                }
+                if (Dist.hasVolKey) {
+                    if (Build.VERSION.SDK_INT < 33) {   // 音量鍵要讀系統的 VolumeInfo（Android 13 起才有）
+                        setChip(accChip, 3, getString(R.string.chip_needs_13)); accBtn.visibility = View.GONE
+                    } else {
+                        setChip(accChip, if (acc) 1 else 2, getString(if (acc) R.string.v_on else R.string.chip_recommended))
+                        accBtn.visibility = if (acc) View.GONE else View.VISIBLE
+                    }
+                }
 
                 segPaint(segSimple, !custom, C_TEAL); segPaint(segCustom, custom, C_PURPLE)
                 tvModeDesc.text = getString(if (custom && nApps == 0) R.string.mode_custom_empty else if (custom) R.string.mode_custom_d else R.string.mode_simple_d)
-                appsBtn.visibility = if (custom) android.view.View.VISIBLE else android.view.View.GONE
+                appsBtn.visibility = if (custom) View.VISIBLE else View.GONE
+                tvPro.visibility = if (proLeft < 0) View.GONE else View.VISIBLE
+                if (proLeft >= 0) tvPro.text = if (proLeft > 0) getString(R.string.pro_trial_left, proLeft) else getString(R.string.pro_trial_over)
 
-                mfBusy = true; mfSw.isChecked = mf == "on"; mfSw.isEnabled = granted; mfBusy = false
+                mfBusy = true; mfSw.isChecked = mf == "on"; mfSw.isEnabled = be != null; mfBusy = false
                 tvMf.text = when (mf) { "on" -> getString(R.string.mf_desc); "off" -> getString(R.string.mf_off_auto); "off_user" -> getString(R.string.mf_off_user); else -> getString(R.string.mf_desc) }
             }
         }.start()
     }
 
-    // ---- 小元件 ----
-    private fun card(bg: Int): LinearLayout = LinearLayout(this).apply {
+    // ---- 小元件（internal：Play 版的設定區塊也用） ----
+    internal fun card(bg: Int): LinearLayout = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         setPadding(dp(18), dp(16), dp(18), dp(16))
         background = GradientDrawable().apply { cornerRadius = dp(22).toFloat(); setColor(bg) }
@@ -159,13 +236,13 @@ class MainActivity : Activity() {
         layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(14) }
     }
 
-    private fun text(t: String, size: Float, color: Int, bold: Boolean = false): TextView = TextView(this).apply {
+    internal fun text(t: String, size: Float, color: Int, bold: Boolean = false): TextView = TextView(this).apply {
         text = t; textSize = size; setTextColor(color); if (bold) setTypeface(typeface, Typeface.BOLD)
     }
 
-    private fun section(t: String, color: Int): TextView = text(t, 19f, color, true).apply { setPadding(0, 0, 0, dp(10)) }
+    internal fun section(t: String, color: Int): TextView = text(t, 19f, color, true).apply { setPadding(0, 0, 0, dp(10)) }
 
-    private fun divider() = android.view.View(this).apply {
+    internal fun divider() = View(this).apply {
         setBackgroundColor(Color.rgb(236, 239, 241))
         layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)).apply { setMargins(0, dp(10), 0, dp(10)) }
     }
@@ -186,15 +263,15 @@ class MainActivity : Activity() {
         addView(action)
     }
 
-    private fun chip(): TextView = text("", 12f, Color.WHITE, true).apply {
+    internal fun chip(): TextView = text("", 12f, Color.WHITE, true).apply {
         setPadding(dp(10), dp(4), dp(10), dp(4))
         background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(C_GREY) }
     }
 
-    /** level：1＝好了（綠）、0＝缺（紅）、2＝建議（橘） */
-    private fun setChip(c: TextView, level: Int, t: String) {
+    /** level：1＝好了（綠）、0＝缺（紅）、3＝不適用（灰）、其他＝建議（橘） */
+    internal fun setChip(c: TextView, level: Int, t: String) {
         c.text = t
-        (c.background as GradientDrawable).setColor(when (level) { 1 -> C_GREEN; 0 -> C_RED; else -> C_ORANGE })
+        (c.background as GradientDrawable).setColor(when (level) { 1 -> C_GREEN; 0 -> C_RED; 3 -> C_GREY; else -> C_ORANGE })
     }
 
     private fun segPaint(b: Button, on: Boolean, color: Int) {
@@ -202,7 +279,7 @@ class MainActivity : Activity() {
         b.setTextColor(if (on) Color.WHITE else color)
     }
 
-    private fun btn(label: String, color: Int, weight: Float = 0f, textColor: Int = Color.WHITE, onClick: () -> Unit): Button = Button(this).apply {
+    internal fun btn(label: String, color: Int, weight: Float = 0f, textColor: Int = Color.WHITE, onClick: () -> Unit): Button = Button(this).apply {
         text = label; isAllCaps = false; textSize = 15f; setTypeface(typeface, Typeface.BOLD)
         // 白底按鈕（狀態卡上）：字用 textColor 傳進來的顏色
         val fill = color; val fg = if (color == Color.WHITE) textColor else Color.WHITE
@@ -216,7 +293,7 @@ class MainActivity : Activity() {
         setOnClickListener { onClick(); refreshSoon() }
     }
 
-    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+    internal fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
     companion object {
         val C_PURPLE = Color.rgb(123, 31, 162)

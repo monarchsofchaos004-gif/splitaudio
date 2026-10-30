@@ -5,12 +5,16 @@ import rikka.shizuku.Shizuku
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
-/** Shizuku 小工具：以 shell 身分跑指令（路由規則要 shell 才有的系統權限）。newProcess 是隱藏方法，用反射叫。 */
-object Shz {
+/** Shizuku 後端：以 shell 身分跑指令（路由規則要 shell 才有的系統權限）。newProcess 是隱藏方法，用反射叫。 */
+object ShizukuBackend : Backend {
     const val REQ = 1001
-    fun alive(): Boolean = try { Shizuku.pingBinder() } catch (_: Throwable) { false }
-    fun granted(): Boolean = try { alive() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED } catch (_: Throwable) { false }
+    override val name = "Shizuku"
+    override fun alive(): Boolean = try { Shizuku.pingBinder() } catch (_: Throwable) { false }
+    override fun granted(): Boolean = try { alive() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED } catch (_: Throwable) { false }
     fun request() { try { if (alive() && !granted()) Shizuku.requestPermission(REQ) } catch (_: Throwable) {} }
+
+    /** Shizuku 服務（重新）出現時叫 cb（sticky：已經在的話馬上叫一次） */
+    fun onBinderReceived(cb: () -> Unit) { try { Shizuku.addBinderReceivedListenerSticky { cb() } } catch (_: Throwable) {} }
 
     private fun newProcess(cmd: String): Process {
         val m = Shizuku::class.java.getDeclaredMethod("newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java)
@@ -19,7 +23,7 @@ object Shz {
     }
 
     /** 跑一條 shell，回 (rc, 輸出)；rc=-2 沒授權、-1 逾時 */
-    fun run(cmd: String, timeoutSec: Int = 30, stdin: ByteArray? = null): Pair<Int, String> {
+    override fun run(cmd: String, timeoutSec: Int, stdin: ByteArray?): Pair<Int, String> {
         if (!granted()) return Pair(-2, if (alive()) "not_granted" else "shizuku_dead")
         return try {
             val p = newProcess(cmd)

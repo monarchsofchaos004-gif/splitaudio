@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Play flavor only: built-in ADB setup (pairing, notifications, licenses). Shared strings live in src/main. -->
+    <string name="sec_setup">一次性設定</string>
+    <string name="setup_done_title">設定完成 ✓</string>
+    <string name="setup_done_d">之後重開機只要連上 WiFi，SplitAudio 會自己接回。</string>
+    <string name="setup_redo">再看一次設定步驟</string>
+    <string name="chip_done">完成 ✓</string>
+    <string name="chip_todo">待辦</string>
+    <string name="chip_next">下一步</string>
+    <string name="step1_title">開發者選項</string>
+    <string name="step1_d">設定 → 關於手機 → 連點「版本號碼」7 下，再回到這裡。</string>
+    <string name="btn_open_about">打開「關於手機」</string>
+    <string name="btn_open_dev">打開開發者選項</string>
+    <string name="step2_title">無線偵錯</string>
+    <string name="step2_d">先連上 WiFi，再到開發者選項打開「無線偵錯」（若問是否「一律允許此網路」請勾選）。</string>
+    <string name="btn_open_wd">打開無線偵錯</string>
+    <string name="need_wifi">目前沒連 WiFi。</string>
+    <string name="step3_title">配對</string>
+    <string name="step3_d">按「開始配對」，到無線偵錯頁點「使用配對碼配對裝置」。通知列會跳出輸入框：直接把 6 位數配對碼打在通知裡（或打在這裡）。</string>
+    <string name="btn_pair">開始配對</string>
+    <string name="pair_code_hint">6 位數配對碼</string>
+    <string name="btn_pair_send">配對</string>
+    <string name="pair_wait">正在找配對視窗…（請點「使用配對碼配對裝置」）</string>
+    <string name="pair_found">找到配對視窗了，請輸入配對碼。</string>
+    <string name="pair_busy">配對中…</string>
+    <string name="pair_ok">配對成功 ✓</string>
+    <string name="pair_fail">配對失敗：%1$s</string>
+    <string name="pair_bad_code">配對碼要是 6 位數字。</string>
+    <string name="pair_no_dialog">請先點「使用配對碼配對裝置」。</string>
+    <string name="step4_title">連線</string>
+    <string name="step4_d">配對後 App 會自己連線，並授權自己一項設定權限（這樣重開機後才能自動把無線偵錯重新打開）。</string>
+    <string name="btn_connect">立即連線</string>
+    <string name="n_pair_title">SplitAudio 配對</string>
+    <string name="n_pair_wait">等待中：請在無線偵錯頁點「使用配對碼配對裝置」。</string>
+    <string name="n_pair_enter">請輸入配對視窗上的 6 位數配對碼。</string>
+    <string name="n_pair_label">配對碼</string>
+    <string name="n_pair_action">輸入配對碼</string>
+    <string name="n_pair_busy">配對中…</string>
+    <string name="n_pair_ok">配對成功，正在完成設定…</string>
+    <string name="n_pair_fail">配對失敗（%1$s）。請重新打開配對視窗。</string>
+    <string name="ch_pair">配對</string>
+    <string name="ch_alert">需要你處理</string>
+    <string name="n_wd_title">請打開無線偵錯</string>
+    <string name="n_wd_text">SplitAudio 連不上這支手機的偵錯服務。請連上 WiFi，並到開發者選項打開「無線偵錯」。</string>
+    <string name="s_need_pair">請先在 App 完成一次性設定</string>
+    <string name="s_no_adb">等待無線偵錯（請在 WiFi 下打開）</string>
+    <string name="lic_title">開源授權</string>
+    <string name="lic_btn">開源授權</string>
+    <string name="sec_custom">客製化</string>
+    <string name="shz_hint">這支手機上的 Shizuku 有在跑。如果你本來就用它，在這裡授權就好，下面的步驟可以略過。</string>
+    <string name="btn_grant_shizuku">授權 Shizuku</string>
+</resources>

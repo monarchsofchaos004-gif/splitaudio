@@ -73,6 +73,7 @@ class AppsActivity : Activity() {
         }
         root.addView(lv, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         setContentView(root)
+        Edge.apply(root, root, lv)   // edge-to-edge：上／左右避開系統列，清單的底部留出導覽列／鍵盤的位置
         Thread {
             val pm = packageManager
             val l = pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)

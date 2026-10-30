@@ -3,7 +3,8 @@ app/build/
 .gradle/
 local.properties
 *.apk
-build.log
+*.log
+*.log.*
 build.sh
 route/out/
 # built from route/AppRoute.java by route/build_dex.sh

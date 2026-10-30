@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+    <!-- INTERNET: the built-in ADB client talks to this phone's own adbd over a TCP socket (127.0.0.1 / the phone's own Wi-Fi address). No data leaves the phone. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Needed by Android's NSD (mDNS) discovery of the phone's own Wireless debugging service -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
+    <!-- Granted to ourselves once, through the paired ADB connection (pm grant); used only to switch Wireless debugging back on after a reboot -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions"/>
+    <!-- libadb-android's manifest has no targetSdk, so the manifest merger can add legacy storage/phone-state permissions; we never use them -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove"/>
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" tools:node="remove"/>
+    <application android:name=".adb.App">
+        <activity android:name=".adb.LicensesActivity" android:exported="false" android:label="@string/lic_title"/>
+        <service android:name=".adb.PairService" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="finds the phone's own Wireless debugging pairing service and takes the pairing code from a notification"/>
+        </service>
+        <receiver android:name=".adb.PairReceiver" android:exported="false"/>
+    </application>
+</manifest>

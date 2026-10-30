@@ -63,10 +63,12 @@ class MixerActivity : Activity() {
                 return row
             }
         }
-        root.addView(ListView(this).apply {
+        val lv = ListView(this).apply {
             adapter = this@MixerActivity.adapter; divider = null; dividerHeight = (8 * dp).toInt(); setPadding(0, pad, 0, pad); clipToPadding = false
-        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        }
+        root.addView(lv, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         setContentView(root)
+        Edge.apply(root, root, lv)   // edge-to-edge：上／左右避開系統列，清單的底部留出導覽列／鍵盤的位置
         Thread {
             val pm = packageManager
             val l = pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
@@ -80,7 +82,7 @@ class MixerActivity : Activity() {
         super.onResume()
         val c = applicationContext
         Thread {
-            if (!Shz.granted()) { runOnUiThread { status.text = getString(R.string.mixer_need_shizuku) }; return@Thread }
+            if (Backends.current() == null) { runOnUiThread { status.text = getString(R.string.mixer_need_setup) }; return@Thread }
             Route.deploy(c)
             Mixer.ensure(c)
             val p = Mixer.playingUids().map { it % 100000 }.toSet()   // 第二空間／工作設定檔的 uid 也算同一個 App
