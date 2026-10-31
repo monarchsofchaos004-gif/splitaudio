@@ -9,6 +9,9 @@
     <string name="st_mode_custom">Mode: Custom (%1$d apps set)</string>
     <string name="apps_title">Output for each app</string>
     <string name="apps_hint">Tap an app to choose where its sound plays. Default = follow the system. If the chosen device isn\'t connected, the app follows the system.</string>
+    <string name="out_tts_marker">(text-to-speech)</string>
+    <string name="nofocus_label">Don\'t let it pause other apps (experimental: some apps stay silent if they can\'t take audio focus)</string>
+    <string name="nofocus_badge">no pause</string>
     <string name="apps_search">Search apps</string>
     <string name="out_default">Default (follow the system)</string>
     <string name="out_speaker">Phone speaker</string>

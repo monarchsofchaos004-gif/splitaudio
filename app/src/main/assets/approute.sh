@@ -11,8 +11,8 @@
 D=/data/local/tmp; LOG=$D/approute.log
 umask 022   # files made here (approute.log, flag files) are 0644, not world-writable; the token file below sets its own 077
 # Music apps: audio from these stays on Bluetooth; routing is active only while one of them plays.
-#   The app writes the user's choice to $D/approute.music (one package name per line); no file, or nothing valid in it = these two.
-DEF_MUSIC="app.morphe.android.apps.youtube.music com.google.android.apps.youtube.music"
+#   The app writes the user's choice to $D/approute.music (one package name per line); no file, or nothing valid in it = the common music players (only installed ones count).
+DEF_MUSIC="com.google.android.apps.youtube.music app.morphe.android.apps.youtube.music com.spotify.music com.apple.android.music deezer.android.app com.aspiro.tidal com.amazon.mp3 com.soundcloud.android com.pandora.android com.maxmpz.audioplayer"
 # the router (start/startmap); the per-app volume process "AppRoute mixer" runs on its own and is not counted here
 pid(){ for p in $(pgrep -f "app_process /system/bin AppRoute"); do grep -q mixer /proc/$p/cmdline 2>/dev/null || { echo $p; break; }; done; }
 mixpid(){ pgrep -f "[A]ppRoute mixer" | head -1; }   # [A]: never match a shell whose own command line has the words
@@ -30,10 +30,25 @@ settoken(){
   chmod 600 $D/approute.token
   SPLITAUDIO_TOKEN="$T"; export SPLITAUDIO_TOKEN
 }
+# "Don't let it pause other apps" (0.5, experimental, Custom mode): $D/approute.nofocus (written by the app, one package name per line)
+#   -> appops TAKE_AUDIO_FOCUS ignore for those apps, so they can't take audio focus away from the music app. $D/approute.nofocus.applied
+#   remembers what was applied, so an app that was taken off the list (or the whole thing on stop / Simple mode) is set back to default.
+nofocus_apply(){
+  NEW=$(grep -E '^[A-Za-z0-9_.]+$' $D/approute.nofocus 2>/dev/null | sort -u)
+  OLD=$(grep -E '^[A-Za-z0-9_.]+$' $D/approute.nofocus.applied 2>/dev/null | sort -u)
+  for p in $OLD; do echo "$NEW" | grep -qx "$p" || { appops set "$p" TAKE_AUDIO_FOCUS default >/dev/null 2>&1; echo "$(date '+%H:%M:%S') nofocus: $p -> default" >> $LOG; }; done
+  for p in $NEW; do appops set "$p" TAKE_AUDIO_FOCUS ignore >/dev/null 2>&1; echo "$(date '+%H:%M:%S') nofocus: $p -> ignore" >> $LOG; done
+  if [ -n "$NEW" ]; then echo "$NEW" > $D/approute.nofocus.applied; else rm -f $D/approute.nofocus.applied; fi
+}
+nofocus_revert(){
+  for p in $(grep -E '^[A-Za-z0-9_.]+$' $D/approute.nofocus.applied 2>/dev/null); do appops set "$p" TAKE_AUDIO_FOCUS default >/dev/null 2>&1; echo "$(date '+%H:%M:%S') nofocus: $p -> default" >> $LOG; done
+  rm -f $D/approute.nofocus.applied
+}
 case "$1" in
   start)
     trimlog
     [ -n "$(pid)" ] && { echo "already pid=$(pid)"; exit 0; }
+    nofocus_revert   # Simple mode has no per-app focus option
     uid(){ pm list packages -U "$1" | grep "package:$1 " | sed 's/.*uid://'; }
     MUSIC=$(grep -E '^[A-Za-z0-9_.]+$' $D/approute.music 2>/dev/null | tr '\n' ' ')   # only valid package names; missing / empty file -> defaults
     [ -z "$(echo $MUSIC)" ] && MUSIC="$DEF_MUSIC"
@@ -57,10 +72,11 @@ case "$1" in
     done < $D/approute.pkgmap
     chmod 644 $D/approute.map.new; mv -f $D/approute.map.new $D/approute.map
     [ -s $D/approute.map ] || { echo "empty map"; exit 1; }
+    nofocus_apply
     settoken
     CLASSPATH=$D/approute.dex setsid nohup app_process /system/bin AppRoute map $D/approute.map >> $LOG 2>&1 < /dev/null &
     sleep 2; echo "started pid=$(pid)"; tail -2 $LOG ;;
-  stop) P=$(pid); [ -n "$P" ] && kill $P; echo "stopped" ;;
+  stop) P=$(pid); [ -n "$P" ] && kill $P; nofocus_revert; echo "stopped" ;;
   status) P=$(pid); echo "pid=${P:-none}"; tail -3 $LOG ;;
   # Per-app volume (0.4): $D/approute.volpkg (written by the app, lines "pkg=0.35", 0 = mute) -> uids -> AppRoute mixer.
   #   Already running = it re-reads the file by itself. No app below 100 % = mixer off (it resets the volumes first).

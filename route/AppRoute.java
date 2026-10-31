@@ -227,7 +227,9 @@ public class AppRoute {
                 pausedForCall = false;
                 if (!musicPlaying(onBt)) { sh("cmd media_session dispatch play"); log("call/voice mode over -> music resumed"); }
             }
-            if ((!all.isEmpty() && musicPlaying(all)) || pausedForCall || focusArmed) lastPlay = now;
+            // any player counts, not only the listed apps: a listed app (e.g. a notification reader's TTS engine) that starts speaking while
+            //   only an unlisted one plays must already be routed from its first word
+            if (musicPlaying(null) || pausedForCall || focusArmed) lastPlay = now;
             StringBuilder key = new StringBuilder();
             java.util.LinkedHashMap<AudioDeviceInfo, int[]> targets = new java.util.LinkedHashMap<>();
             for (String t : TARGETS) if (dev.containsKey(t) && map.containsKey(t)) {
@@ -241,10 +243,10 @@ public class AppRoute {
                 catch (Throwable e) { log("register fail " + e); policy = null; regKey = ""; }
             }
             if (policy != null) multiFocusOnce(all);
-            if (!want && policy != null) { unregister(); regKey = ""; log((call ? "call/voice mode" : targets.isEmpty() ? "no target device" : "listed apps stopped") + " -> rule off"); }
+            if (!want && policy != null) { unregister(); regKey = ""; log((call ? "call/voice mode" : targets.isEmpty() ? "no target device" : "nothing playing") + " -> rule off"); }
             if (now - Math.max(lastPlay, startAt) > 600000) {
                 if (policy != null) unregister();
-                log("no listed app played 10min -> exit");
+                log("nothing played 10min -> exit");
                 System.exit(0);
             }
             focusWait(all, 2000);

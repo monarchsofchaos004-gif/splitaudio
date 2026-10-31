@@ -9,6 +9,9 @@
     <string name="st_mode_custom">模式：自訂（已設定 %1$d 個 App）</string>
     <string name="apps_title">每個 App 的輸出</string>
     <string name="apps_hint">點 App 選它的聲音從哪裡出來。預設＝跟系統。選的裝置沒連著時，這個 App 就跟系統。</string>
+    <string name="out_tts_marker">（文字轉語音）</string>
+    <string name="nofocus_label">不要讓它暫停別的 App（實驗功能：有些 App 搶不到音訊焦點就會不出聲）</string>
+    <string name="nofocus_badge">不暫停</string>
     <string name="apps_search">搜尋 App</string>
     <string name="out_default">預設（跟系統）</string>
     <string name="out_speaker">手機喇叭</string>

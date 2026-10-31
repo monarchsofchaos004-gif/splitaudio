@@ -159,6 +159,8 @@ object Route {
             if (!Outputs.hasAny(ctx)) return "no_apps".also { lastStart = it }
             val w = Backends.writeFile("$D/approute.pkgmap", Outputs.mapText(ctx).toByteArray())
             if (w.first != 0) return "map_fail:${w.first} ${w.second.take(60)}".also { lastStart = it }
+            val nf = Backends.writeFile("$D/approute.nofocus", NoFocus.text(NoFocus.set(ctx)).toByteArray())
+            if (nf.first != 0) return "nofocus_fail:${nf.first} ${nf.second.take(60)}".also { lastStart = it }
         } else {
             val w = Backends.writeFile("$D/approute.music", Music.text(Music.set(ctx)).toByteArray())
             if (w.first != 0) return "music_fail:${w.first} ${w.second.take(60)}".also { lastStart = it }

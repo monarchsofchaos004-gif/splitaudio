@@ -6,8 +6,13 @@ import java.io.File
 
 /** 簡單模式的音樂 App 清單：預設、套件名驗證、approute.music 的檔案文字、勾選規則（至少留一個）、跟 approute.sh 內建預設一致。 */
 class MusicTest {
-    @Test fun defaults_areYtMusicAndTheMorpheBuild() =
-        assertEquals(setOf("com.google.android.apps.youtube.music", "app.morphe.android.apps.youtube.music"), Music.DEFAULT)
+    @Test fun defaults_areYtMusicFirstThenCommonPlayers() {
+        assertEquals(listOf("com.google.android.apps.youtube.music", "app.morphe.android.apps.youtube.music"), Music.DEFAULT.toList().take(2))
+        assertTrue(Music.DEFAULT.containsAll(listOf("com.spotify.music", "com.apple.android.music", "deezer.android.app", "com.aspiro.tidal",
+            "com.amazon.mp3", "com.soundcloud.android", "com.pandora.android", "com.maxmpz.audioplayer")))
+        assertEquals(10, Music.DEFAULT.size)
+        assertEquals(Music.DEFAULT, Music.valid(Music.DEFAULT))   // every default passes the package-name check
+    }
 
     @Test fun effective_nothingSavedOrNothingValid_isTheDefault() {
         assertEquals(Music.DEFAULT, Music.effective(null))
@@ -45,7 +50,7 @@ class MusicTest {
         val f = listOf("src/main/assets/approute.sh", "app/src/main/assets/approute.sh").map(::File).first { it.exists() }
         val line = Regex("DEF_MUSIC=\"([^\"]*)\"").find(f.readText())
         assertNotNull("approute.sh has no DEF_MUSIC", line)
-        assertEquals(Music.DEFAULT, line!!.groupValues[1].trim().split(Regex("\\s+")).toSet())
+        assertEquals(Music.DEFAULT.toList(), line!!.groupValues[1].trim().split(Regex("\\s+")))
     }
 
     @Test fun script_readsTheUsersMusicFileAndHandsOverTheControlTokenAndUid() {

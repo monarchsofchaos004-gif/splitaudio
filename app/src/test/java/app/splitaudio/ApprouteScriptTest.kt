@@ -31,6 +31,7 @@ class ApprouteScriptTest {
             "echo \"package:com.example.video uid:10200\"")
         fake("pgrep", "exit 1")                                // 沒有路由在跑
         fake("app_process", "echo \"fake router \$*\"")        // 假的路由程式：把收到的參數寫進 log 就結束
+        fake("appops", "echo \"\$*\" >> ${tmp.path}/appops.calls")
         fake("setsid", "exec \"\$@\"")
         fake("nohup", "exec \"\$@\"")
         val src = listOf("src/main/assets/approute.sh", "app/src/main/assets/approute.sh").map(::File).first { it.exists() }.readText()
@@ -94,6 +95,23 @@ class ApprouteScriptTest {
         assertEquals("rw-------", perms(token))                         // token 檔自己收到 0600，不受 umask 022 影響
         assertEquals(tok, token.readText())
         val logText = log.readText()
-        assertTrue(logText, logText.contains("AppRoute 10102,10101 10200"))   // 先是音樂 App 的 uid，再是其他 App 的 uid
+        assertTrue(logText, logText.contains("AppRoute 10101,10102 10200"))   // 先是音樂 App 的 uid，再是其他 App 的 uid
+    }
+
+    private fun appopsCalls(): List<String> = File(tmp, "appops.calls").takeIf { it.exists() }?.readLines().orEmpty()
+
+    @Test fun nofocus_startmapAppliesTheList_dropsRemovedOnes_stopRevertsAll() {
+        File(tmp, "approute.pkgmap").writeText("speaker:com.example.video\n")
+        File(tmp, "approute.nofocus").writeText("com.example.video\nbad;name\n")
+        sh("startmap")
+        assertEquals(listOf("set com.example.video TAKE_AUDIO_FOCUS ignore"), appopsCalls())
+        assertEquals("com.example.video", File(tmp, "approute.nofocus.applied").readText().trim())
+        File(tmp, "approute.nofocus").writeText("com.example.other\n")   // 換一個
+        sh("startmap")
+        assertEquals(listOf("set com.example.video TAKE_AUDIO_FOCUS ignore", "set com.example.video TAKE_AUDIO_FOCUS default",
+            "set com.example.other TAKE_AUDIO_FOCUS ignore"), appopsCalls())
+        sh("stop")
+        assertEquals("set com.example.other TAKE_AUDIO_FOCUS default", appopsCalls().last())
+        assertFalse(File(tmp, "approute.nofocus.applied").exists())
     }
 }
