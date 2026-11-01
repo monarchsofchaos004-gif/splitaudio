@@ -1,5 +1,12 @@
 # Translating SplitAudio
 
+[![Translation status](https://hosted.weblate.org/widget/splitaudio/app/svg-badge.svg)](https://hosted.weblate.org/engage/splitaudio/)
+
+**Easiest way: translate in the browser on [Hosted Weblate](https://hosted.weblate.org/engage/splitaudio/).** No account on GitHub, no XML, no build:
+pick your language (or add a new one), translate string by string, and Weblate opens the pull request for you; you are credited as the author.
+
+The rest of this page is for people who prefer editing the files directly.
+
 SplitAudio is small (about 96 strings in `app/src/main/res/values/strings.xml`, plus about 48 more in `app/src/play/res/values/strings.xml`
 that only the Google Play build shows), so a full translation takes 15–30 minutes. Thank you for helping!
 

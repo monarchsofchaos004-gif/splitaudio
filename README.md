@@ -155,7 +155,7 @@ The ticked apps stay on Bluetooth, everything else plays on the speaker. The def
 2. 連藍牙、播 YouTube Music → 通知欄出現「SplitAudio：分流中」。用別的音樂 App？到「選音樂 App」勾選。
    Connect Bluetooth, play YouTube Music → the notification shows "SplitAudio：分流中" (routing on). Another music app? Tick it under "Choose music apps".
 
-介面目前是繁體中文；歡迎英文翻譯 PR。The UI is Traditional Chinese for now; translation PRs welcome.
+介面有英文與繁體中文；其他語言歡迎到 [Weblate](https://hosted.weblate.org/engage/splitaudio/) 線上翻譯。UI in English and Traditional Chinese; other languages welcome on [Weblate](https://hosted.weblate.org/engage/splitaudio/).
 
 ## 疑難排解 / Troubleshooting
 - **音量鍵沒反應，主畫面「音量鍵」那列變回橘色的「建議開」（未開）**：到系統「設定 → 無障礙」把 SplitAudio 重新打開。HyperOS 在 App 被強制停止（例如被清理記憶體的功能）後，會把它的無障礙服務關掉，要自己再開一次。
@@ -192,9 +192,11 @@ it does not read screen text. See [SECURITY.md](SECURITY.md).
 
 ## 幫忙翻譯 / Help translate
 
-SplitAudio 目前有英文和繁體中文。想翻成你的語言？看 [TRANSLATING.md](TRANSLATING.md)，大約 15～30 分鐘。
+[![Translation status](https://hosted.weblate.org/widget/splitaudio/app/svg-badge.svg)](https://hosted.weblate.org/engage/splitaudio/)
 
-SplitAudio is available in English and Traditional Chinese. Want it in your language? See [TRANSLATING.md](TRANSLATING.md) — it takes about 15–30 minutes.
+SplitAudio 目前有英文和繁體中文。想翻成你的語言？最簡單是在 [Weblate](https://hosted.weblate.org/engage/splitaudio/) 網頁上直接翻（不用 GitHub 帳號、不用改檔），大約 15～30 分鐘；想自己改檔看 [TRANSLATING.md](TRANSLATING.md)。
+
+SplitAudio is available in English and Traditional Chinese. Want it in your language? The easiest way is to translate in the browser on [Weblate](https://hosted.weblate.org/engage/splitaudio/) (no GitHub account, no files to edit), about 15–30 minutes; to edit the files yourself see [TRANSLATING.md](TRANSLATING.md).
 
 ## 授權 / License
 MIT
