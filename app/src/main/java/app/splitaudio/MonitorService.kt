@@ -128,7 +128,7 @@ class MonitorService : Service() {
     /** No usable backend: tell the notification; if Shizuku is running but its permission was refused, that is a failure to report */
     private fun noBackend() {
         setState(Dist.needSetupText(this))
-        if (ShizukuBackend.alive() && !ShizukuBackend.granted()) Health.noteFailure(applicationContext, "shizuku permission not granted")
+        if (ShizukuBackend.alive() && !ShizukuBackend.granted() && Health.everOn(applicationContext)) Health.noteFailure(applicationContext, "shizuku permission not granted")
     }
 
     private fun checkCustom() {

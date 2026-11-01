@@ -36,7 +36,7 @@ object Health {
     fun noteOn(c: Context, now: Long = System.currentTimeMillis()) {
         val p = sp(c)
         val start = streakStart(p.getLong("streak_start", 0L), p.getLong("last_on", 0L), now)
-        val e = p.edit().putLong("streak_start", start).putLong("last_on", now).putInt("fail_count", 0).remove("fail_at")
+        val e = p.edit().putLong("streak_start", start).putLong("last_on", now).putInt("fail_count", 0).remove("fail_at").putBoolean("ever_on", true)
         if (successDue(start, now, p.getBoolean("success_shown", false))) e.putBoolean("success_due", true)
         e.apply()
     }
@@ -54,6 +54,9 @@ object Health {
             Alerts.postLink(c, Alerts.ID_FAIL, c.getString(R.string.n_fail_title), c.getString(R.string.n_fail_text), Diag.problemUrl(c))
         }
     }
+
+    /** Routing has worked at least once on this install (so a missing Shizuku grant later is a real failure, not first-run setup). */
+    fun everOn(c: Context) = sp(c).getBoolean("ever_on", false)
 
     fun successCardVisible(c: Context) = sp(c).getBoolean("success_due", false) && !sp(c).getBoolean("success_shown", false)
     fun dismissSuccess(c: Context) { sp(c).edit().putBoolean("success_shown", true).remove("success_due").apply() }
