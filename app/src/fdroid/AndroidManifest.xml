@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- INTERNET is used only for the local control port of the routing helper (TCP 127.0.0.1:47821, loopback only): the app and VolKeyService
          connect to it. Every connection has to start with the app's own random token and come from this app's uid, so other apps cannot use the port.
+         The only other use: the optional once-a-day GitHub releases query for the new-version hint (it only links to the release page, nothing is downloaded).
          No data leaves the phone. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>

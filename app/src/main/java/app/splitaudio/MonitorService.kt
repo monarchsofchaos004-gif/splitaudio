@@ -78,7 +78,7 @@ class MonitorService : Service() {
     /** 路由規則現在是開的嗎？（背景執行緒叫）順便：第一次看到分流掛上時，若用戶還沒決定「開影片會不會暫停音樂」就發通知請他決定 */
     private fun ruleOnNoted(): Boolean {
         val on = Route.ruleOn(this)
-        if (on) noteSplit()
+        if (on) { Health.noteOn(applicationContext); noteSplit() }
         return on
     }
 
@@ -111,11 +111,24 @@ class MonitorService : Service() {
             val now = System.currentTimeMillis()
             if (now - lastTry < 30_000) return@Thread
             lastTry = now
-            if (Backends.current() == null) { setState(Dist.needSetupText(this)); return@Thread }
+            if (Backends.current() == null) { noBackend(); return@Thread }
             val r = Route.start(this)
             Thread.sleep(2500)
-            setState(if (ruleOnNoted()) getString(R.string.s_split) else Dist.startResultText(this, r))
+            afterStart(r)
         }.start()
+    }
+
+    /** Route.start was just run ([r] = its result): split is on -> fine; otherwise a failure (route command error / rule did not appear) goes to [Health] */
+    private fun afterStart(r: String) {
+        if (ruleOnNoted()) { setState(getString(R.string.s_split)); return }
+        if (Health.isFailure(r)) Health.noteFailure(applicationContext, r)
+        setState(Dist.startResultText(this, r))
+    }
+
+    /** No usable backend: tell the notification; if Shizuku is running but its permission was refused, that is a failure to report */
+    private fun noBackend() {
+        setState(Dist.needSetupText(this))
+        if (ShizukuBackend.alive() && !ShizukuBackend.granted()) Health.noteFailure(applicationContext, "shizuku permission not granted")
     }
 
     private fun checkCustom() {
@@ -128,10 +141,10 @@ class MonitorService : Service() {
             val now = System.currentTimeMillis()
             if (now - lastTry < 30_000) return@Thread
             lastTry = now
-            if (Backends.current() == null) { setState(Dist.needSetupText(this)); return@Thread }
+            if (Backends.current() == null) { noBackend(); return@Thread }
             val r = Route.start(this)
             Thread.sleep(2500)
-            setState(if (ruleOnNoted()) getString(R.string.s_split) else Dist.startResultText(this, r))
+            afterStart(r)
         }.start()
     }
 
@@ -147,6 +160,7 @@ class MonitorService : Service() {
     private fun setState(s: String) {
         if (s == state) return
         state = s
+        AppLog.add("state: $s")
         try { (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(1, notif()) } catch (_: Exception) {}
     }
 

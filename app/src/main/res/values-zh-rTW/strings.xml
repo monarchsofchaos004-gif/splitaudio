@@ -104,4 +104,22 @@
     <string name="n_mf_title">開影片會不會暫停音樂？</string>
     <string name="n_mf_text">點這裡決定。</string>
     <string name="ch_alert">需要你處理</string>
+    <string name="sec_help">回報與意見</string>
+    <string name="help_desc">在你的手機上能用嗎？按一下會用瀏覽器開好填好的回報表單，你只要按送出。沒有 GitHub 帳號就複製診斷文字（裡面沒有帳號、聯絡人或藍牙名稱）。</string>
+    <string name="btn_report">回報問題</string>
+    <string name="btn_works">能用！</string>
+    <string name="btn_copy_diag">複製診斷文字</string>
+    <string name="btn_close">關閉</string>
+    <string name="toast_copied">已複製診斷文字</string>
+    <string name="toast_no_browser">找不到瀏覽器</string>
+    <string name="succ_title">在你的 %1$s 能用嗎？一鍵告訴我們</string>
+    <string name="fail_title">出問題了，一鍵附診斷回報</string>
+    <string name="fail_report">附診斷回報</string>
+    <string name="n_fail_title">出問題了</string>
+    <string name="n_fail_text">點一下，附上診斷文字回報。</string>
+    <string name="upd_title">有新版本 %1$s</string>
+    <string name="upd_whatsnew">看更新內容</string>
+    <string name="upd_skip">這版先不提醒</string>
+    <string name="upd_switch">檢查新版本</string>
+    <string name="upd_switch_d">開啟 App 時每天最多看一次 GitHub，只顯示發布頁連結，不會下載或安裝任何東西。</string>
 </resources>

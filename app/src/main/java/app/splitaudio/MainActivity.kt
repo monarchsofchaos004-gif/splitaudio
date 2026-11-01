@@ -10,6 +10,10 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.net.Uri
+import android.widget.Toast
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
@@ -47,6 +51,13 @@ class MainActivity : Activity() {
     private lateinit var tvMk: TextView
     private lateinit var tvModeDesc: TextView
     private lateinit var tvPro: TextView
+    private lateinit var updCard: LinearLayout
+    private lateinit var tvUpd: TextView
+    private lateinit var succCard: LinearLayout
+    private lateinit var tvSucc: TextView
+    private lateinit var failCard: LinearLayout
+    private var updTag: String? = null
+    private var updUrl: String? = null
     private var setup: SetupSection? = null
     @Volatile private var mf: String? = null
     private var mfBusy = false
@@ -71,6 +82,33 @@ class MainActivity : Activity() {
         hero.addView(text("🎧 " + getString(R.string.app_name), 26f, Color.WHITE, true))
         hero.addView(text(getString(R.string.hero_sub), 14f, Color.rgb(252, 228, 236)).apply { setPadding(0, dp(6), 0, 0) })
         root.addView(hero)
+
+        // 新版本提示（每天最多查一次；fdroid 版只連到 GitHub 發布頁、不下載安裝；play 版整個關掉）
+        updCard = card(Color.WHITE).apply {
+            visibility = View.GONE
+            tvUpd = text("", 16f, C_TEXT, true).apply { setPadding(0, 0, 0, dp(4)) }
+            addView(tvUpd)
+            addView(btn(getString(R.string.upd_whatsnew), C_BLUE) { updUrl?.let { openUrl(it) } })
+            addView(btn(getString(R.string.upd_skip), C_GREY) { updTag?.let { Update.skip(this@MainActivity, it) }; renderTop() })
+        }
+        root.addView(updCard)
+        // 第一次分流順利跑了約 10 分鐘 → 只問一次「在你的 <機型> 能用？」
+        succCard = card(Color.WHITE).apply {
+            visibility = View.GONE
+            tvSucc = text("", 16f, C_TEXT, true).apply { setPadding(0, 0, 0, dp(4)) }
+            addView(tvSucc)
+            addView(btn(getString(R.string.btn_works), C_GREEN) { Health.dismissSuccess(this@MainActivity); openUrl(Diag.worksUrl(this@MainActivity)); renderTop() })
+            addView(btn(getString(R.string.btn_close), C_GREY) { Health.dismissSuccess(this@MainActivity); renderTop() })
+        }
+        root.addView(succCard)
+        // 偵測到失敗 → 一鍵帶診斷回報
+        failCard = card(Color.WHITE).apply {
+            visibility = View.GONE
+            addView(text("⚠ " + getString(R.string.fail_title), 16f, C_RED, true).apply { setPadding(0, 0, 0, dp(4)) })
+            addView(btn(getString(R.string.fail_report), C_RED) { openUrl(Diag.problemUrl(this@MainActivity)) })
+            addView(btn(getString(R.string.btn_close), C_GREY) { Health.dismissFailure(this@MainActivity); renderTop() })
+        }
+        root.addView(failCard)
 
         // Play 版：一次性設定（內建 ADB 引導）；fdroid 版沒有（null），改用下面「必要設定」的 Shizuku 那列
         setup = Dist.setupSection(this, root)
@@ -159,6 +197,24 @@ class MainActivity : Activity() {
         cusCard.addView(tvMk)
         root.addView(cusCard)
 
+        // 回報：兩鍵開預填好的 GitHub issue 表單（用戶只要按送出）；沒有 GitHub 帳號就複製診斷文字
+        val help = card(Color.WHITE)
+        help.addView(section("💬 " + getString(R.string.sec_help), C_BLUE))
+        help.addView(text(getString(R.string.help_desc), 13f, C_TEXT_2).apply { setPadding(0, 0, 0, dp(6)) })
+        help.addView(btn(getString(R.string.btn_report), C_RED) { openUrl(Diag.problemUrl(this)) })
+        help.addView(btn(getString(R.string.btn_works), C_GREEN) { openUrl(Diag.worksUrl(this)) })
+        help.addView(btn(getString(R.string.btn_copy_diag), C_GREY) { copyDiag() })
+        if (Dist.updateCheck) {
+            help.addView(divider())
+            help.addView(Switch(this).apply {
+                text = getString(R.string.upd_switch); textSize = 15f; setTextColor(C_TEXT); setTypeface(typeface, Typeface.BOLD)
+                isChecked = Update.enabled(this@MainActivity)
+                setOnCheckedChangeListener { _, on -> Update.setEnabled(this@MainActivity, on); if (on) checkUpdate(); renderTop() }
+            })
+            help.addView(text(getString(R.string.upd_switch_d), 13f, C_TEXT_2).apply { setPadding(0, 0, 0, dp(4)) })
+        }
+        root.addView(help)
+
         setup?.addFooter(root)
 
         val scroll = ScrollView(this).apply {
@@ -177,6 +233,33 @@ class MainActivity : Activity() {
             ticking = true; ui.removeCallbacks(tickRun); ui.postDelayed(tickRun, 3000)
         }
         refreshSoon()
+        renderTop()
+        checkUpdate()
+    }
+
+    private fun checkUpdate() { Update.checkAsync(this) { runOnUiThread { renderTop() } } }
+
+    /** 頂端三張卡（新版本／第一次成功／失敗）的顯示與文字 */
+    internal fun renderTop() {
+        val u = Update.pending(this)
+        updTag = u?.tag; updUrl = u?.htmlUrl
+        updCard.visibility = if (u != null) View.VISIBLE else View.GONE
+        if (u != null) tvUpd.text = "🆕 " + getString(R.string.upd_title, Update.parseVersion(u.tag)?.toString() ?: u.tag)
+        val s = Health.successCardVisible(this)
+        succCard.visibility = if (s) View.VISIBLE else View.GONE
+        if (s) tvSucc.text = "🎉 " + getString(R.string.succ_title, Diag.deviceLabel())
+        failCard.visibility = if (Health.failCardVisible(this)) View.VISIBLE else View.GONE
+    }
+
+    /** 用瀏覽器開網址（沒有瀏覽器就提示） */
+    private fun openUrl(url: String) {
+        try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        catch (_: Exception) { Toast.makeText(this, R.string.toast_no_browser, Toast.LENGTH_LONG).show() }
+    }
+
+    private fun copyDiag() {
+        getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("SplitAudio diagnostics", Diag.text(this)))
+        Toast.makeText(this, R.string.toast_copied, Toast.LENGTH_SHORT).show()
     }
 
     override fun onPause() {
@@ -243,6 +326,7 @@ class MainActivity : Activity() {
             val upd = setup?.poll()
             runOnUiThread {
                 upd?.invoke()
+                renderTop()
                 // 有一次性設定區塊的版本：設定完成（有可用的後端）才顯示分流功能；fdroid 版一直顯示
                 val ready = setup == null || be != null
                 liveCard.visibility = if (ready) View.VISIBLE else View.GONE

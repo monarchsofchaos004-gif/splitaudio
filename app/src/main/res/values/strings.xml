@@ -104,4 +104,22 @@
     <string name="n_mf_title">Will a video pause your music?</string>
     <string name="n_mf_text">Tap here to decide.</string>
     <string name="ch_alert">Needs your attention</string>
+    <string name="sec_help">Help and feedback</string>
+    <string name="help_desc">Does it work on your phone? One tap opens a pre-filled report in your browser; you only press Submit. No GitHub account? Copy the diagnostics instead (no accounts, contacts or Bluetooth names in it).</string>
+    <string name="btn_report">Report a problem</string>
+    <string name="btn_works">It works!</string>
+    <string name="btn_copy_diag">Copy diagnostics</string>
+    <string name="btn_close">Close</string>
+    <string name="toast_copied">Diagnostics copied</string>
+    <string name="toast_no_browser">No browser found</string>
+    <string name="succ_title">Working on your %1$s? Tell us in one tap</string>
+    <string name="fail_title">Something went wrong, report it with diagnostics</string>
+    <string name="fail_report">Report with diagnostics</string>
+    <string name="n_fail_title">Something went wrong</string>
+    <string name="n_fail_text">Tap to report it with diagnostics.</string>
+    <string name="upd_title">New version %1$s</string>
+    <string name="upd_whatsnew">What\'s new</string>
+    <string name="upd_skip">Skip this version</string>
+    <string name="upd_switch">Check for new versions</string>
+    <string name="upd_switch_d">Looks at GitHub once a day when you open the app. It only shows a link to the release page; nothing is downloaded or installed.</string>
 </resources>
