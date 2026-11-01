@@ -1,0 +1,4 @@
+Simple mode now knows more music apps by default (Spotify, Apple Music, Deezer, Tidal, ...). Custom mode keeps routing on while anything plays and lists the system text-to-speech engine, so notification readers can be routed. New per-app option "Don't let it pause other apps" (experimental).
+
+
+Beta 1 of 0.5.0: please report how it behaves on your phone (COMPATIBILITY.md / device report issue).

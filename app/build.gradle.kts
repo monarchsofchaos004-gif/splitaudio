@@ -8,8 +8,8 @@ android {
     defaultConfig {
         minSdk = 31
         targetSdk = 36
-        versionCode = 9
-        versionName = "0.5.0-dev"
+        versionCode = 10
+        versionName = "0.5.0-beta1"
     }
     // One code base, two builds:
     //   fdroid = Shizuku only, every feature free, accessibility volume keys (F-Droid / GitHub releases), applicationId app.splitaudio
@@ -19,25 +19,11 @@ android {
         create("fdroid") { dimension = "dist"; applicationId = "app.splitaudio" }
         create("play") { dimension = "dist"; applicationId = "app.splitaudio.play" }
     }
-    // Release signing: only active when RELEASE_SIGNING_JSON points to an existing file
-    // (local release builds). Without it (e.g. CI) the build behaves exactly as before.
-    val releaseSigningFile = System.getenv("RELEASE_SIGNING_JSON")?.let { file(it) }?.takeIf { it.exists() }
-    if (releaseSigningFile != null) {
-        @Suppress("UNCHECKED_CAST")
-        val sj = groovy.json.JsonSlurper().parse(releaseSigningFile) as Map<String, Any?>
-        signingConfigs {
-            create("release") {
-                storeFile = file(sj["storeFile"] as String)
-                storePassword = sj["storePassword"] as String
-                keyAlias = "splitaudio"
-                keyPassword = sj["keyPassword"] as String
-            }
-        }
-    }
+    // Release builds are UNSIGNED on purpose: this file has no signing configuration and the build never reads a key file.
+    // The release APK is signed afterwards, outside of gradle, with the developer's key (CI uploads the unsigned APK as an artifact).
     buildTypes {
         release {
             isMinifyEnabled = false
-            if (releaseSigningFile != null) signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
