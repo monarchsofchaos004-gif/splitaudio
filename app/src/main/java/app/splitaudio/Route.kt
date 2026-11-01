@@ -23,6 +23,7 @@ object Route {
     const val DENIED = "denied"
     private const val D = "/data/local/tmp"
     @Volatile var lastStart = "none"
+        set(v) { field = v; AppLog.add("route: $v") }
     /** 最近一次 [query] 沒拿到回答的原因（診斷用：[DENIED]＝路由在跑但不認我們；其他＝連不上／逾時…）；拿到回答就清空 */
     @Volatile var lastAskError = ""
     @Volatile private var tokenCache: String? = null

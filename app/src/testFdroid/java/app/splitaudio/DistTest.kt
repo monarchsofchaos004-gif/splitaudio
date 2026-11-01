@@ -20,4 +20,10 @@ class DistTest {
         assertTrue(xml.contains("android.permission.FOREGROUND_SERVICE_SPECIAL_USE"))
         assertTrue("the fdroid build needs INTERNET for the helper's control port on 127.0.0.1", xml.contains("android.permission.INTERNET\""))
     }
+
+    /** Report/update wiring: the flavor name goes into every issue report; the new-version hint is fdroid only (Google Play updates itself) */
+    @Test fun reportAndUpdateWiring() {
+        assertEquals("fdroid", Dist.flavor)
+        assertEquals(true, Dist.updateCheck)
+    }
 }

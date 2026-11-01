@@ -24,4 +24,10 @@ class DistTest {
         assertTrue(xml.contains("android.permission.CHANGE_WIFI_MULTICAST_STATE"))   // connectedDevice 在 Android 14+ 需要的前提權限之一
         assertTrue("the built-in ADB needs INTERNET", xml.contains("android.permission.INTERNET\""))
     }
+
+    /** Report/update wiring: the flavor name goes into every issue report; the new-version hint is fdroid only (Google Play updates itself) */
+    @Test fun reportAndUpdateWiring() {
+        assertEquals("play", Dist.flavor)
+        assertEquals(false, Dist.updateCheck)
+    }
 }

@@ -17,6 +17,12 @@ object Dist {
     /** 後端優先序（第一個 granted 的就用） */
     fun backends(): List<Backend> = listOf(ShizukuBackend, AdbBackend)
 
+    /** Build flavor name (shown in diagnostics and issue reports) */
+    const val flavor = "play"
+
+    /** New-version hint (play: off, Google Play updates the app) */
+    const val updateCheck = false
+
     /** Pro 功能（自訂模式、每個 App 的音量）是否一律開放 */
     val proAlways = false
 
