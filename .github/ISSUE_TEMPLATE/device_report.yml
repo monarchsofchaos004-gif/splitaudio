@@ -1,0 +1,55 @@
+name: Device report / 機型回報
+description: SplitAudio works or does not work on your phone. Either way, tell us. 可用或不可用都歡迎回報。
+title: "[device] <brand model>: works / partial / not working"
+labels: ["device-report"]
+body:
+  - type: input
+    id: device
+    attributes:
+      label: Phone / 手機
+      placeholder: "e.g. OnePlus 11 5G"
+    validations:
+      required: true
+  - type: input
+    id: rom
+    attributes:
+      label: ROM and Android version / 系統版本
+      placeholder: "e.g. OxygenOS 14, Android 14"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: SplitAudio version (the release you installed) / App 版本
+    validations:
+      required: true
+  - type: dropdown
+    id: simple
+    attributes:
+      label: Simple mode / 簡單模式
+      options: ["works", "partly works", "does not work", "not tested"]
+    validations:
+      required: true
+  - type: dropdown
+    id: custom
+    attributes:
+      label: Custom mode / 自訂模式
+      options: ["works", "partly works", "does not work", "not tested"]
+    validations:
+      required: true
+  - type: dropdown
+    id: volkeys
+    attributes:
+      label: Volume keys (fdroid build, Android 13+) / 音量鍵
+      options: ["works", "partly works", "does not work", "not tested"]
+  - type: textarea
+    id: notes
+    attributes:
+      label: What happened / 發生什麼
+      description: Which apps you routed where, what you heard, any error shown.
+  - type: checkboxes
+    id: compat
+    attributes:
+      label: Compatibility list
+      options:
+        - label: This report may be added to COMPATIBILITY.md (or I will add the row myself in a pull request).
