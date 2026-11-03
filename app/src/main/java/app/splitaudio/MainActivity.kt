@@ -105,6 +105,7 @@ class MainActivity : Activity() {
         failCard = card(Color.WHITE).apply {
             visibility = View.GONE
             addView(text("⚠ " + getString(R.string.fail_title), 16f, C_RED, true).apply { setPadding(0, 0, 0, dp(4)) })
+            addView(text(getString(R.string.fail_hint), 13f, C_GREY).apply { setPadding(0, 0, 0, dp(6)) })
             addView(btn(getString(R.string.fail_report), C_RED) { openUrl(Diag.problemUrl(this@MainActivity)) })
             addView(btn(getString(R.string.btn_close), C_GREY) { Health.dismissFailure(this@MainActivity); renderTop() })
         }

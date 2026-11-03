@@ -115,6 +115,7 @@
     <string name="succ_title">在你的 %1$s 能用嗎？一鍵告訴我們</string>
     <string name="fail_title">出問題了，一鍵附診斷回報</string>
     <string name="fail_report">附診斷回報</string>
+    <string name="fail_hint">如果現在分流是正常的，直接關掉就好，大概只是啟動時的一下子失敗；一直失敗才回報。</string>
     <string name="n_fail_title">出問題了</string>
     <string name="n_fail_text">點一下，附上診斷文字回報。</string>
     <string name="upd_title">有新版本 %1$s</string>

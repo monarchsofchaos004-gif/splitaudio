@@ -1,0 +1,1 @@
+Fewer false "something went wrong" prompts: misses in the first 90 s after the service starts (e.g. right after an update, while Shizuku reconnects) are ignored, and the prompt needs three failures spanning at least 90 s. The prompt now says to just close it if the split is working.

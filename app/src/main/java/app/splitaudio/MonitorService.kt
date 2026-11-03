@@ -49,6 +49,7 @@ class MonitorService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        Health.startGrace(applicationContext)   // after an update/reboot Shizuku may need a while: misses in the first 90 s are not failures
         state = getString(R.string.s_idle)
         am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         startForeground(1, notif(), Dist.fgsType)

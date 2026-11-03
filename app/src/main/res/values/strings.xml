@@ -115,6 +115,7 @@
     <string name="succ_title">Working on your %1$s? Tell us in one tap</string>
     <string name="fail_title">Something went wrong, report it with diagnostics</string>
     <string name="fail_report">Report with diagnostics</string>
+    <string name="fail_hint">If the split is working right now, just close this: it was probably a hiccup while starting. Report only if it keeps failing.</string>
     <string name="n_fail_title">Something went wrong</string>
     <string name="n_fail_text">Tap to report it with diagnostics.</string>
     <string name="upd_title">New version %1$s</string>

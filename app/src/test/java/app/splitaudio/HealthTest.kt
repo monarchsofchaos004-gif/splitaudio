@@ -27,12 +27,27 @@ class HealthTest {
         assertFalse(Health.isFailure("already")); assertFalse(Health.isFailure("no_apps")); assertFalse(Health.isFailure(""))
     }
 
-    @Test fun notifyNeedsTwoInARowAndRateLimit() {
-        assertFalse(Health.shouldNotifyFailure(1, 0L, 1000L))
-        assertTrue(Health.shouldNotifyFailure(2, 0L, 1000L))
+    @Test fun notifyNeedsThreeInARowAndRateLimit() {
+        assertFalse(Health.shouldNotifyFailure(2, 0L, 1000L))
+        assertTrue(Health.shouldNotifyFailure(3, 0L, 1000L))
         assertFalse(Health.shouldNotifyFailure(5, 1000L, 1000L + Health.NOTIFY_GAP_MS - 1))
         assertTrue(Health.shouldNotifyFailure(5, 1000L, 1000L + Health.NOTIFY_GAP_MS))
-        assertTrue(Health.shouldNotifyFailure(2, 9000L, 1000L))   // clock went backwards
+        assertTrue(Health.shouldNotifyFailure(3, 9000L, 1000L))   // clock went backwards
+    }
+
+    @Test fun failDue_needsCountAndSpan() {
+        // 剛更新完兩次沒接上 → 不算；要三次以上且從第一次起至少 90 秒還在失敗
+        assertFalse(Health.failDue(2, 1000L, 1000L + Health.FAIL_SPAN_MS))
+        assertFalse(Health.failDue(3, 1000L, 1000L + Health.FAIL_SPAN_MS - 1))
+        assertTrue(Health.failDue(3, 1000L, 1000L + Health.FAIL_SPAN_MS))
+        assertFalse(Health.failDue(3, 0L, 1000L))
+        assertFalse(Health.failDue(3, 5000L, 1000L))   // clock went backwards
+    }
+
+    @Test fun grace_afterServiceStart() {
+        assertTrue(Health.inGrace(1000L + Health.GRACE_MS, 1000L + Health.GRACE_MS - 1))
+        assertFalse(Health.inGrace(1000L + Health.GRACE_MS, 1000L + Health.GRACE_MS))
+        assertFalse(Health.inGrace(0L, 1000L))
     }
 
     @Test fun failCardWindow() {
