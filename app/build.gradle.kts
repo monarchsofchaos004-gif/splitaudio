@@ -8,8 +8,8 @@ android {
     defaultConfig {
         minSdk = 31
         targetSdk = 36
-        versionCode = 11
-        versionName = "0.5.0-beta2"
+        versionCode = 12
+        versionName = "0.5.0"
     }
     // One code base, two builds:
     //   fdroid = Shizuku only, every feature free, accessibility volume keys (F-Droid / GitHub releases), applicationId app.splitaudio

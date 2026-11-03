@@ -95,6 +95,8 @@ class ReportTest {
     @Test fun deviceTypeNames_areTypesNotNames() {
         assertEquals("bluetooth_a2dp", Report.deviceTypeName(android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP))
         assertEquals("builtin_speaker", Report.deviceTypeName(android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER))
+        assertEquals("fm", Report.deviceTypeName(android.media.AudioDeviceInfo.TYPE_FM))                 // 14, seen on Xiaomi 15
+        assertEquals("telephony", Report.deviceTypeName(android.media.AudioDeviceInfo.TYPE_TELEPHONY))   // 18
         assertEquals("type_9999", Report.deviceTypeName(9999))
     }
 }
