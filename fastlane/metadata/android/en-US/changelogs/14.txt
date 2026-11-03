@@ -1,0 +1,1 @@
+Volume keys on speaker-routed apps are more reliable: the foreground app is taken from the last window change when the active window cannot be read (full-screen video), the rule state is re-checked at key time instead of trusting a stale poll, and every key decision is written to the diagnostics log so reports show why a key was passed through.
