@@ -24,6 +24,15 @@ class VolKeyService : AccessibilityService() {
     override fun onServiceConnected() {
         MonitorService.ensure(this)
         if (Build.VERSION.SDK_INT < MIN_SDK) return
+        try {   // 0.5.3: some ROMs ignore accessibilityFlags from XML → request key filtering again at runtime and log what we actually got
+            val si = serviceInfo
+            if (si != null) {
+                si.flags = si.flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS or
+                    android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+                serviceInfo = si
+                AppLog.add("volkey: connected flags=0x%x caps=0x%x".format(serviceInfo?.flags ?: -1, serviceInfo?.capabilities ?: -1))
+            } else AppLog.add("volkey: connected, serviceInfo null")
+        } catch (e: Exception) { AppLog.add("volkey: flags err ${e.javaClass.simpleName}") }
         Thread {
             while (alive) {
                 routeOn = Route.ask(this@VolKeyService, "state") == "on"; routeAsked = System.currentTimeMillis()
@@ -41,6 +50,7 @@ class VolKeyService : AccessibilityService() {
         if (e == null || Build.VERSION.SDK_INT < MIN_SDK) return false
         val k = e.keyCode
         if (k != KeyEvent.KEYCODE_VOLUME_UP && k != KeyEvent.KEYCODE_VOLUME_DOWN) return false
+        if (e.action == KeyEvent.ACTION_DOWN) AppLog.add("volkey: key ${if (k == KeyEvent.KEYCODE_VOLUME_UP) "up" else "down"} received")   // 0.5.3
         if (e.action == KeyEvent.ACTION_UP) return consumed.remove(k)
         if (e.action != KeyEvent.ACTION_DOWN) return false
         if (!routeOn && System.currentTimeMillis() - routeAsked > 1500) {   // 0.5.2：輪詢結果太舊就當場再問（本機指令口，約 10 ms），免得剛開規則那幾秒按鍵被放過

@@ -15,6 +15,7 @@ object AppLog {
     @Synchronized fun add(msg: String, nowMs: Long = System.currentTimeMillis()) {
         lines.addLast(format(nowMs, msg))
         while (lines.size > MAX) lines.removeFirst()
+        try { android.util.Log.i("SplitAudio", msg.take(200)) } catch (_: Throwable) {}   // 0.5.3: mirror to logcat (status text only); no-op in JVM unit tests
     }
 
     @Synchronized fun tail(n: Int = Report.LOG_LINES): List<String> = lines.toList().takeLast(n)

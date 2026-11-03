@@ -1,0 +1,1 @@
+Volume-key fix follow-up: the accessibility service now re-requests key-event filtering at connect time (some ROMs ignore the XML flag) and the app log is mirrored to logcat (status lines only) so reports show whether a key was received at all.
