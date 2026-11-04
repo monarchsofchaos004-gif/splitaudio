@@ -17,7 +17,9 @@ import android.widget.Toast
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
+import android.text.InputType
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Switch
@@ -57,7 +59,7 @@ class MainActivity : Activity() {
     private lateinit var fbTop: LinearLayout
     private lateinit var fbBottom: LinearLayout
     private lateinit var tvFb: TextView
-    private lateinit var btnWorks: View
+    private lateinit var tvFbLast: TextView
     private var btnFbClose: View? = null
     private lateinit var failCard: LinearLayout
     private lateinit var crashCard: LinearLayout
@@ -108,7 +110,7 @@ class MainActivity : Activity() {
             visibility = View.GONE
             addView(text("⚠ " + getString(R.string.fail_title), 16f, C_RED, true).apply { setPadding(0, 0, 0, dp(4)) })
             addView(text(getString(if (Dist.feedbackDismissable) R.string.fail_hint else R.string.fail_hint_auto), 13f, C_GREY).apply { setPadding(0, 0, 0, dp(6)) })
-            addView(btn(getString(R.string.fail_report), C_RED) { openUrl(Diag.problemUrl(this@MainActivity)) })
+            addView(btn(getString(R.string.fail_report), C_RED) { reportDialog("problem") })
             if (Dist.feedbackDismissable) addView(btn(getString(R.string.btn_close), C_GREY) { Health.dismissFailure(this@MainActivity); renderTop() })
         }
         root.addView(failCard)
@@ -117,7 +119,7 @@ class MainActivity : Activity() {
             visibility = View.GONE
             addView(text("⚠ " + getString(R.string.crash_title), 16f, C_RED, true).apply { setPadding(0, 0, 0, dp(4)) })
             addView(text(getString(R.string.crash_hint), 13f, C_GREY).apply { setPadding(0, 0, 0, dp(6)) })
-            addView(btn(getString(R.string.fail_report), C_RED) { Crash.dismiss(this@MainActivity); openUrl(Diag.crashUrl(this@MainActivity)); renderTop() })
+            addView(btn(getString(R.string.fail_report), C_RED) { reportDialog("crash") })
             if (Dist.feedbackDismissable) addView(btn(getString(R.string.btn_close), C_GREY) { Crash.dismiss(this@MainActivity); renderTop() })
         }
         root.addView(crashCard)
@@ -213,16 +215,19 @@ class MainActivity : Activity() {
         // 「複製診斷文字」給沒有 GitHub 帳號的人貼給我們；回報過能用後標題改成謝謝、「能用！」收起。免費版沒有「關閉」（兩條路都收資料）。
         fbBottom = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         root.addView(fbBottom)
+        // 0.5.6 一鍵直送（用戶選 A）：「能用！」直接把診斷送到自家接口（server/），「回報問題」先問一句發生什麼事再送；送不出去改開 GitHub 表單。
+        // 按鈕一直都在（用戶：不要回報過就永遠收起）；「上次回報」一行讓他知道送過什麼。
         fbCard = card(Color.WHITE).apply {
             addView(section("💬 " + getString(R.string.sec_help), C_BLUE))
             tvFb = text("", 16f, C_TEXT, true).apply { setPadding(0, 0, 0, dp(4)) }
             addView(tvFb)
             addView(text(getString(R.string.help_desc), 13f, C_TEXT_2).apply { setPadding(0, 0, 0, dp(6)) })
-            btnWorks = btn(getString(R.string.btn_works), C_GREEN) { Health.noteWorksReported(this@MainActivity); openUrl(Diag.worksUrl(this@MainActivity)); renderTop() }
-            addView(btnWorks)
-            addView(btn(getString(R.string.btn_report), C_RED) { Health.dismissSuccess(this@MainActivity); openUrl(Diag.problemUrl(this@MainActivity)); renderTop() })
+            tvFbLast = text("", 13f, C_TEXT_2).apply { setPadding(0, 0, 0, dp(6)); visibility = View.GONE }
+            addView(tvFbLast)
+            addView(btn(getString(R.string.btn_works), C_GREEN) { Health.answered(this@MainActivity, Diag.versionCode(this@MainActivity)); sendReport("works", ""); renderTop() })
+            addView(btn(getString(R.string.btn_report), C_RED) { Health.answered(this@MainActivity, Diag.versionCode(this@MainActivity)); reportDialog("problem"); renderTop() })
             addView(btn(getString(R.string.btn_copy_diag), C_GREY) { copyDiag() })
-            if (Dist.feedbackDismissable) btnFbClose = btn(getString(R.string.btn_close), C_GREY) { Health.dismissSuccess(this@MainActivity); renderTop() }.also { addView(it) }
+            if (Dist.feedbackDismissable) btnFbClose = btn(getString(R.string.btn_close), C_GREY) { Health.answered(this@MainActivity, Diag.versionCode(this@MainActivity)); renderTop() }.also { addView(it) }
         }
         if (Dist.updateCheck) {
             val about = card(Color.WHITE)
@@ -267,13 +272,18 @@ class MainActivity : Activity() {
         updTag = u?.tag; updUrl = u?.htmlUrl
         updCard.visibility = if (u != null) View.VISIBLE else View.GONE
         if (u != null) tvUpd.text = "🆕 " + getString(R.string.upd_title, Update.parseVersion(u.tag)?.toString() ?: u.tag)
-        // 回報卡：第一次順利 10 分鐘、還沒回答 → 搬到頂端槽；否則在底下槽。回報過能用 → 標題改謝謝、「能用！」收起
-        val works = Health.worksReported(this)
-        val top = Health.feedbackOnTop(Health.successCardVisible(this), works)
+        // 回報卡：換版或滿 30 天先重新武裝提問；第一次順利 10 分鐘、還沒回答 → 搬到頂端槽；否則在底下槽。按鈕一直都在。
+        Health.reaskIfDue(this, Diag.versionCode(this))
+        val top = Health.successCardVisible(this)
         val slot = if (top) fbTop else fbBottom
         if (fbCard.parent !== slot) { (fbCard.parent as? LinearLayout)?.removeView(fbCard); slot.addView(fbCard) }
-        tvFb.text = if (works) getString(R.string.fb_thanks, Diag.deviceLabel()) else (if (top) "🎉 " else "") + getString(R.string.succ_title, Diag.deviceLabel())
-        btnWorks.visibility = if (works) View.GONE else View.VISIBLE
+        tvFb.text = (if (top) "🎉 " else "") + getString(R.string.succ_title, Diag.deviceLabel())
+        val last = Feedback.lastReport(this)
+        tvFbLast.visibility = if (last == null) View.GONE else View.VISIBLE
+        if (last != null) {
+            val kind = getString(when (last.first) { "works" -> R.string.fb_kind_works; "crash" -> R.string.fb_kind_crash; else -> R.string.fb_kind_problem })
+            tvFbLast.text = getString(R.string.fb_last, kind, last.second, java.text.DateFormat.getDateInstance(java.text.DateFormat.SHORT).format(java.util.Date(last.third)))
+        }
         btnFbClose?.visibility = if (top) View.VISIBLE else View.GONE
         failCard.visibility = if (Health.failCardVisible(this)) View.VISIBLE else View.GONE
         crashCard.visibility = if (Crash.cardVisible(this)) View.VISIBLE else View.GONE
@@ -288,6 +298,34 @@ class MainActivity : Activity() {
     private fun copyDiag() {
         getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("SplitAudio diagnostics", Diag.text(this)))
         Toast.makeText(this, R.string.toast_copied, Toast.LENGTH_SHORT).show()
+    }
+
+    /** 0.5.6: the GitHub form for a kind of report (fallback when the direct send fails, or when the user wants a thread to follow) */
+    private fun formUrl(kind: String): String = when (kind) { "works" -> Diag.worksUrl(this); "crash" -> Diag.crashUrl(this); else -> Diag.problemUrl(this) }
+
+    /** One-tap direct send; when it fails, the pre-filled GitHub form opens so nobody is left without a way to report. */
+    private fun sendReport(kind: String, note: String) {
+        if (kind == "crash") Crash.dismiss(this)
+        Feedback.send(this, kind, note) { ok ->
+            Toast.makeText(applicationContext, if (ok) R.string.toast_sent else R.string.toast_send_fail, Toast.LENGTH_LONG).show()
+            if (!ok) openUrl(formUrl(kind))
+            renderTop()
+        }
+    }
+
+    /** "Report a problem" / crash card: one optional line about what happened, then Send (direct) or the GitHub form. */
+    private fun reportDialog(kind: String) {
+        val input = EditText(this).apply {
+            hint = getString(R.string.fb_note_hint); inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            minLines = 2; maxLines = 5; setPadding(dp(16), dp(12), dp(16), dp(12))
+        }
+        AlertDialog.Builder(this)
+            .setTitle(getString(if (kind == "crash") R.string.crash_title else R.string.fail_title))
+            .setView(input)
+            .setPositiveButton(R.string.fb_send) { _, _ -> sendReport(kind, input.text.toString()) }
+            .setNeutralButton(R.string.fb_github) { _, _ -> if (kind == "crash") Crash.dismiss(this); openUrl(formUrl(kind)); renderTop() }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     override fun onPause() {

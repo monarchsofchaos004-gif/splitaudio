@@ -53,10 +53,12 @@ class HealthTest {
         assertFalse(Health.inGrace(0L, 1000L))
     }
 
-    @Test fun feedbackOnTop_onlyWhileTheQuestionIsUnanswered() {
-        org.junit.Assert.assertTrue(Health.feedbackOnTop(true, false))
-        org.junit.Assert.assertFalse(Health.feedbackOnTop(false, false))
-        org.junit.Assert.assertFalse(Health.feedbackOnTop(true, true))
+    @Test fun reask_afterUpdateOrThirtyDays() {
+        val t = 1_700_000_000_000L
+        org.junit.Assert.assertFalse(Health.reaskDue(18, 18, t, t + Health.REASK_MS - 1))
+        org.junit.Assert.assertTrue(Health.reaskDue(18, 18, t, t + Health.REASK_MS))
+        org.junit.Assert.assertTrue(Health.reaskDue(17, 18, t, t + 1))
+        org.junit.Assert.assertTrue(Health.reaskDue(-1, 18, 0L, t))   // answered before 0.5.6 (no version recorded) -> ask once more
     }
 
     @Test fun failCardWindow() {

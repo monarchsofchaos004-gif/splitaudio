@@ -105,7 +105,7 @@
     <string name="n_mf_text">點這裡決定。</string>
     <string name="ch_alert">需要你處理</string>
     <string name="sec_help">回報與意見</string>
-    <string name="help_desc">按一下就把修你機型需要的資訊送到：有 GitHub 帳號會開好填好的表單，你只要按送出；沒有帳號就按「複製診斷文字」貼給我們（裡面沒有帳號、聯絡人或藍牙名稱）。</string>
+    <string name="help_desc">按一下就送到，不用任何帳號：「能用！」直接送出你這台的診斷，「回報問題」可以多寫一句發生什麼事（送的就是「複製診斷文字」那份，裡面沒有帳號、聯絡人或藍牙名稱）。想追蹤進度可改用 GitHub 表單，或複製診斷文字貼給我們。之後又不能用也隨時能再回報。</string>
     <string name="btn_report">回報問題</string>
     <string name="btn_works">能用！</string>
     <string name="btn_copy_diag">複製診斷文字</string>
@@ -113,7 +113,15 @@
     <string name="toast_copied">已複製診斷文字</string>
     <string name="toast_no_browser">找不到瀏覽器</string>
     <string name="succ_title">在你的 %1$s 能用嗎？一鍵告訴我們</string>
-    <string name="fb_thanks">謝謝！你的 %1$s 已回報能用</string>
+    <string name="toast_sent">已送出，謝謝！</string>
+    <string name="toast_send_fail">送不出去，改開 GitHub 表單</string>
+    <string name="fb_note_hint">發生什麼事？（可不填）</string>
+    <string name="fb_send">送出</string>
+    <string name="fb_github">用 GitHub 表單</string>
+    <string name="fb_last">上次回報：%1$s（%2$s，%3$s）</string>
+    <string name="fb_kind_works">能用</string>
+    <string name="fb_kind_problem">有問題</string>
+    <string name="fb_kind_crash">當機</string>
     <string name="fail_title">出問題了，一鍵附診斷回報</string>
     <string name="fail_report">附診斷回報</string>
     <string name="fail_hint">如果現在分流是正常的，直接關掉就好，大概只是啟動時的一下子失敗；一直失敗才回報。</string>

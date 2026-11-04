@@ -1,0 +1,47 @@
+[Unit]
+Description=SplitAudio one-tap report endpoint (server/feedback_server.py)
+Documentation=https://github.com/monarchsofchaos004-gif/splitaudio/tree/main/server
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+ExecStart=/usr/bin/python3 -I /usr/local/lib/sa-feedback/feedback_server.py --port 5011 --data /home/ubuntu/oss/feedback
+Restart=always
+RestartSec=5
+UMask=0077
+# resource caps: this is a tiny stdlib HTTP server
+MemoryMax=128M
+MemorySwapMax=0
+OOMScoreAdjust=300
+Nice=5
+# sandbox: the process holds no secrets and must not be able to read any (home is replaced by an empty tmpfs,
+# only its own data directory is bound back in; the script itself lives read-only under /usr/local/lib)
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=tmpfs
+BindPaths=/home/ubuntu/oss/feedback
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

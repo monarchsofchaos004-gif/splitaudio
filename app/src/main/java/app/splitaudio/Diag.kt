@@ -7,6 +7,8 @@ import rikka.shizuku.Shizuku
 
 /** Collects the diagnostics for [Report] (needs a Context). Never reads account, contacts or Bluetooth device names. */
 object Diag {
+    /** versionCode (minSdk 31, so longVersionCode is always there); 0 when unreadable */
+    fun versionCode(c: Context): Int = try { c.packageManager.getPackageInfo(c.packageName, 0).longVersionCode.toInt() } catch (_: Throwable) { 0 }
     fun versionName(c: Context): String = try { c.packageManager.getPackageInfo(c.packageName, 0).versionName ?: "?" } catch (_: Throwable) { "?" }
 
     fun mode(c: Context): String = if (Outputs.customFlag(c)) "custom" else "simple"

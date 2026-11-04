@@ -72,11 +72,20 @@ object Health {
 
     fun successCardVisible(c: Context) = sp(c).getBoolean("success_due", false) && !sp(c).getBoolean("success_shown", false)
     fun dismissSuccess(c: Context) { sp(c).edit().putBoolean("success_shown", true).remove("success_due").apply() }
-    /** 0.5.6 合併回報卡：按過「能用！」（之後卡片標題改成謝謝、「能用！」收起；「回報問題」只算回答了提問，不算這個） */
-    fun worksReported(c: Context) = sp(c).getBoolean("works_reported", false)
-    fun noteWorksReported(c: Context) { sp(c).edit().putBoolean("works_reported", true).putBoolean("success_shown", true).remove("success_due").apply() }
-    /** 回報卡要不要搬到主畫面頂端：第一次順利 10 分鐘的提問還沒回答、而且還沒回報過能用 */
-    fun feedbackOnTop(successDue: Boolean, worksReported: Boolean) = successDue && !worksReported
+    /** 0.5.6（用戶 2026-11-04：不要回報過就永遠收起）：「能用嗎？」的提問回答過（能用！／回報問題／Play 版關閉）記下版本與時間；
+     *  換了版本或滿 30 天就再問一次（之後又不能用也問得到），按鈕本身一直都在。 */
+    const val REASK_MS = 30L * 24 * 3600 * 1000
+    fun reaskDue(answeredVer: Int, curVer: Int, answeredAt: Long, now: Long): Boolean = answeredVer != curVer || now - answeredAt >= REASK_MS
+    fun answered(c: Context, verCode: Int, now: Long = System.currentTimeMillis()) {
+        sp(c).edit().putBoolean("success_shown", true).remove("success_due").putInt("ans_ver", verCode).putLong("ans_at", now).apply()
+    }
+    /** Call on resume: re-arm the question (fresh 10-minute streak) when the answer is from another version or older than 30 days. */
+    fun reaskIfDue(c: Context, verCode: Int, now: Long = System.currentTimeMillis()) {
+        val p = sp(c)
+        if (!p.getBoolean("success_shown", false)) return
+        if (reaskDue(p.getInt("ans_ver", -1), verCode, p.getLong("ans_at", 0L), now))
+            p.edit().putBoolean("success_shown", false).remove("success_due").putLong("streak_start", 0L).apply()
+    }
     fun failCardVisible(c: Context, now: Long = System.currentTimeMillis()) = failCardVisible(sp(c).getLong("fail_at", 0L), now)
     fun dismissFailure(c: Context) { sp(c).edit().remove("fail_at").remove("fail_first").putInt("fail_count", 0).apply() }
 
