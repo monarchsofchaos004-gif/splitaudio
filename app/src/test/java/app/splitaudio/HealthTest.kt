@@ -53,6 +53,12 @@ class HealthTest {
         assertFalse(Health.inGrace(0L, 1000L))
     }
 
+    @Test fun feedbackOnTop_onlyWhileTheQuestionIsUnanswered() {
+        org.junit.Assert.assertTrue(Health.feedbackOnTop(true, false))
+        org.junit.Assert.assertFalse(Health.feedbackOnTop(false, false))
+        org.junit.Assert.assertFalse(Health.feedbackOnTop(true, true))
+    }
+
     @Test fun failCardWindow() {
         assertFalse(Health.failCardVisible(0L, 1000L)); assertTrue(Health.failCardVisible(1000L, 1000L + Health.FAIL_CARD_MS - 1))
         assertFalse(Health.failCardVisible(1000L, 1000L + Health.FAIL_CARD_MS))

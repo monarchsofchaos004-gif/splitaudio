@@ -53,8 +53,12 @@ class MainActivity : Activity() {
     private lateinit var tvPro: TextView
     private lateinit var updCard: LinearLayout
     private lateinit var tvUpd: TextView
-    private lateinit var succCard: LinearLayout
-    private lateinit var tvSucc: TextView
+    private lateinit var fbCard: LinearLayout
+    private lateinit var fbTop: LinearLayout
+    private lateinit var fbBottom: LinearLayout
+    private lateinit var tvFb: TextView
+    private lateinit var btnWorks: View
+    private var btnFbClose: View? = null
     private lateinit var failCard: LinearLayout
     private lateinit var crashCard: LinearLayout
     private var updTag: String? = null
@@ -94,16 +98,11 @@ class MainActivity : Activity() {
             if (Dist.feedbackDismissable) addView(btn(getString(R.string.upd_skip), C_GREY) { updTag?.let { Update.skip(this@MainActivity, it) }; renderTop() })
         }
         root.addView(updCard)
-        // 第一次分流順利跑了約 10 分鐘 → 只問一次「在你的 <機型> 能用？」；免費版沒有「關閉」，改成「能用！」「回報問題」兩條路都收資料
-        succCard = card(Color.WHITE).apply {
-            visibility = View.GONE
-            tvSucc = text("", 16f, C_TEXT, true).apply { setPadding(0, 0, 0, dp(4)) }
-            addView(tvSucc)
-            addView(btn(getString(R.string.btn_works), C_GREEN) { Health.dismissSuccess(this@MainActivity); openUrl(Diag.worksUrl(this@MainActivity)); renderTop() })
-            if (Dist.feedbackDismissable) addView(btn(getString(R.string.btn_close), C_GREY) { Health.dismissSuccess(this@MainActivity); renderTop() })
-            else addView(btn(getString(R.string.btn_report), C_RED) { Health.dismissSuccess(this@MainActivity); openUrl(Diag.problemUrl(this@MainActivity)); renderTop() })
-        }
-        root.addView(succCard)
+        // 0.5.6：「能用嗎？」卡與底下的「回報與意見」合併成同一張卡（用戶 2026-11-04：兩個區塊太像）。
+        // 第一次分流順利跑約 10 分鐘、還沒回答時，這張卡搬到這個頂端槽提醒一次；回答過（能用！／回報問題／Play 版關閉）就回到底下的槽，
+        // 「回報問題」「複製診斷文字」一直都在。卡片本體在下面 fbCard 建，renderTop() 決定放哪個槽。
+        fbTop = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        root.addView(fbTop)
         // 偵測到失敗 → 一鍵帶診斷回報；免費版沒有「關閉」（分流又正常或 24 小時後卡片自己消失）
         failCard = card(Color.WHITE).apply {
             visibility = View.GONE
@@ -210,25 +209,33 @@ class MainActivity : Activity() {
         cusCard.addView(tvMk)
         root.addView(cusCard)
 
-        // 回報：兩鍵開預填好的 GitHub issue 表單（用戶只要按送出）；沒有 GitHub 帳號就複製診斷文字
-        val help = card(Color.WHITE)
-        help.addView(section("💬 " + getString(R.string.sec_help), C_BLUE))
-        help.addView(text(getString(R.string.help_desc), 13f, C_TEXT_2).apply { setPadding(0, 0, 0, dp(6)) })
-        help.addView(btn(getString(R.string.btn_report), C_RED) { openUrl(Diag.problemUrl(this)) })
-        help.addView(btn(getString(R.string.btn_works), C_GREEN) { openUrl(Diag.worksUrl(this)) })
-        help.addView(btn(getString(R.string.btn_copy_diag), C_GREY) { copyDiag() })
+        // 回報與意見（唯一一張回報卡）：標題問「在你的 <機型> 能用嗎？」；「能用！」「回報問題」開預填好的 GitHub 表單（只要按送出），
+        // 「複製診斷文字」給沒有 GitHub 帳號的人貼給我們；回報過能用後標題改成謝謝、「能用！」收起。免費版沒有「關閉」（兩條路都收資料）。
+        fbBottom = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        root.addView(fbBottom)
+        fbCard = card(Color.WHITE).apply {
+            addView(section("💬 " + getString(R.string.sec_help), C_BLUE))
+            tvFb = text("", 16f, C_TEXT, true).apply { setPadding(0, 0, 0, dp(4)) }
+            addView(tvFb)
+            addView(text(getString(R.string.help_desc), 13f, C_TEXT_2).apply { setPadding(0, 0, 0, dp(6)) })
+            btnWorks = btn(getString(R.string.btn_works), C_GREEN) { Health.noteWorksReported(this@MainActivity); openUrl(Diag.worksUrl(this@MainActivity)); renderTop() }
+            addView(btnWorks)
+            addView(btn(getString(R.string.btn_report), C_RED) { Health.dismissSuccess(this@MainActivity); openUrl(Diag.problemUrl(this@MainActivity)); renderTop() })
+            addView(btn(getString(R.string.btn_copy_diag), C_GREY) { copyDiag() })
+            if (Dist.feedbackDismissable) btnFbClose = btn(getString(R.string.btn_close), C_GREY) { Health.dismissSuccess(this@MainActivity); renderTop() }.also { addView(it) }
+        }
         if (Dist.updateCheck) {
-            help.addView(divider())
+            val about = card(Color.WHITE)
             // 0.5.5 免費版：新版檢查沒有開關（只說明它做什麼）；付費版保留開關
-            if (Dist.feedbackDismissable) help.addView(Switch(this).apply {
+            if (Dist.feedbackDismissable) about.addView(Switch(this).apply {
                 text = getString(R.string.upd_switch); textSize = 15f; setTextColor(C_TEXT); setTypeface(typeface, Typeface.BOLD)
                 isChecked = Update.enabled(this@MainActivity)
                 setOnCheckedChangeListener { _, on -> Update.setEnabled(this@MainActivity, on); if (on) checkUpdate(); renderTop() }
             })
-            else help.addView(text(getString(R.string.upd_switch), 15f, C_TEXT, true))
-            help.addView(text(getString(R.string.upd_switch_d), 13f, C_TEXT_2).apply { setPadding(0, 0, 0, dp(4)) })
+            else about.addView(text(getString(R.string.upd_switch), 15f, C_TEXT, true))
+            about.addView(text(getString(R.string.upd_switch_d), 13f, C_TEXT_2).apply { setPadding(0, 0, 0, dp(4)) })
+            root.addView(about)
         }
-        root.addView(help)
 
         setup?.addFooter(root)
 
@@ -260,9 +267,14 @@ class MainActivity : Activity() {
         updTag = u?.tag; updUrl = u?.htmlUrl
         updCard.visibility = if (u != null) View.VISIBLE else View.GONE
         if (u != null) tvUpd.text = "🆕 " + getString(R.string.upd_title, Update.parseVersion(u.tag)?.toString() ?: u.tag)
-        val s = Health.successCardVisible(this)
-        succCard.visibility = if (s) View.VISIBLE else View.GONE
-        if (s) tvSucc.text = "🎉 " + getString(R.string.succ_title, Diag.deviceLabel())
+        // 回報卡：第一次順利 10 分鐘、還沒回答 → 搬到頂端槽；否則在底下槽。回報過能用 → 標題改謝謝、「能用！」收起
+        val works = Health.worksReported(this)
+        val top = Health.feedbackOnTop(Health.successCardVisible(this), works)
+        val slot = if (top) fbTop else fbBottom
+        if (fbCard.parent !== slot) { (fbCard.parent as? LinearLayout)?.removeView(fbCard); slot.addView(fbCard) }
+        tvFb.text = if (works) getString(R.string.fb_thanks, Diag.deviceLabel()) else (if (top) "🎉 " else "") + getString(R.string.succ_title, Diag.deviceLabel())
+        btnWorks.visibility = if (works) View.GONE else View.VISIBLE
+        btnFbClose?.visibility = if (top) View.VISIBLE else View.GONE
         failCard.visibility = if (Health.failCardVisible(this)) View.VISIBLE else View.GONE
         crashCard.visibility = if (Crash.cardVisible(this)) View.VISIBLE else View.GONE
     }

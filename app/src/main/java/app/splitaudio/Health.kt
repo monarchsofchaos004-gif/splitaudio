@@ -72,6 +72,11 @@ object Health {
 
     fun successCardVisible(c: Context) = sp(c).getBoolean("success_due", false) && !sp(c).getBoolean("success_shown", false)
     fun dismissSuccess(c: Context) { sp(c).edit().putBoolean("success_shown", true).remove("success_due").apply() }
+    /** 0.5.6 合併回報卡：按過「能用！」（之後卡片標題改成謝謝、「能用！」收起；「回報問題」只算回答了提問，不算這個） */
+    fun worksReported(c: Context) = sp(c).getBoolean("works_reported", false)
+    fun noteWorksReported(c: Context) { sp(c).edit().putBoolean("works_reported", true).putBoolean("success_shown", true).remove("success_due").apply() }
+    /** 回報卡要不要搬到主畫面頂端：第一次順利 10 分鐘的提問還沒回答、而且還沒回報過能用 */
+    fun feedbackOnTop(successDue: Boolean, worksReported: Boolean) = successDue && !worksReported
     fun failCardVisible(c: Context, now: Long = System.currentTimeMillis()) = failCardVisible(sp(c).getLong("fail_at", 0L), now)
     fun dismissFailure(c: Context) { sp(c).edit().remove("fail_at").remove("fail_first").putInt("fail_count", 0).apply() }
 

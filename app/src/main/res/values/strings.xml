@@ -105,7 +105,7 @@
     <string name="n_mf_text">Tap here to decide.</string>
     <string name="ch_alert">Needs your attention</string>
     <string name="sec_help">Help and feedback</string>
-    <string name="help_desc">Does it work on your phone? One tap opens a pre-filled report in your browser; you only press Submit. No GitHub account? Copy the diagnostics instead (no accounts, contacts or Bluetooth names in it).</string>
+    <string name="help_desc">One tap sends what is needed to get your phone fixed: with a GitHub account a pre-filled form opens and you only press Submit; without one, tap "Copy diagnostics" and paste it to us (no accounts, contacts or Bluetooth names in it).</string>
     <string name="btn_report">Report a problem</string>
     <string name="btn_works">It works!</string>
     <string name="btn_copy_diag">Copy diagnostics</string>
@@ -113,6 +113,7 @@
     <string name="toast_copied">Diagnostics copied</string>
     <string name="toast_no_browser">No browser found</string>
     <string name="succ_title">Working on your %1$s? Tell us in one tap</string>
+    <string name="fb_thanks">Thanks! Your %1$s is reported as working</string>
     <string name="fail_title">Something went wrong, report it with diagnostics</string>
     <string name="fail_report">Report with diagnostics</string>
     <string name="fail_hint">If the split is working right now, just close this: it was probably a hiccup while starting. Report only if it keeps failing.</string>
