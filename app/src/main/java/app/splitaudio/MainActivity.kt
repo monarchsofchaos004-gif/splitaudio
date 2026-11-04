@@ -56,6 +56,7 @@ class MainActivity : Activity() {
     private lateinit var succCard: LinearLayout
     private lateinit var tvSucc: TextView
     private lateinit var failCard: LinearLayout
+    private lateinit var crashCard: LinearLayout
     private var updTag: String? = null
     private var updUrl: String? = null
     private var setup: SetupSection? = null
@@ -110,6 +111,15 @@ class MainActivity : Activity() {
             addView(btn(getString(R.string.btn_close), C_GREY) { Health.dismissFailure(this@MainActivity); renderTop() })
         }
         root.addView(failCard)
+        // 0.5.4：上次 App 當掉（Crash 存了堆疊）→ 一鍵附當機記錄回報；回報或關閉後同一次當機不再問
+        crashCard = card(Color.WHITE).apply {
+            visibility = View.GONE
+            addView(text("⚠ " + getString(R.string.crash_title), 16f, C_RED, true).apply { setPadding(0, 0, 0, dp(4)) })
+            addView(text(getString(R.string.crash_hint), 13f, C_GREY).apply { setPadding(0, 0, 0, dp(6)) })
+            addView(btn(getString(R.string.fail_report), C_RED) { Crash.dismiss(this@MainActivity); openUrl(Diag.crashUrl(this@MainActivity)); renderTop() })
+            addView(btn(getString(R.string.btn_close), C_GREY) { Crash.dismiss(this@MainActivity); renderTop() })
+        }
+        root.addView(crashCard)
 
         // Play 版：一次性設定（內建 ADB 引導）；fdroid 版沒有（null），改用下面「必要設定」的 Shizuku 那列
         setup = Dist.setupSection(this, root)
@@ -250,6 +260,7 @@ class MainActivity : Activity() {
         succCard.visibility = if (s) View.VISIBLE else View.GONE
         if (s) tvSucc.text = "🎉 " + getString(R.string.succ_title, Diag.deviceLabel())
         failCard.visibility = if (Health.failCardVisible(this)) View.VISIBLE else View.GONE
+        crashCard.visibility = if (Crash.cardVisible(this)) View.VISIBLE else View.GONE
     }
 
     /** 用瀏覽器開網址（沒有瀏覽器就提示） */

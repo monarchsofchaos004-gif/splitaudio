@@ -163,9 +163,9 @@ The ticked apps stay on Bluetooth, everything else plays on the speaker. The def
   HyperOS turns an app's accessibility service off after the app has been force-stopped (for example by a memory cleaner), so it has to be switched on again by hand.
 
 ## 回報與新版提示 / Reporting and update hint
-主畫面的「回報問題」「能用！」會用瀏覽器開一份已填好機型、系統、版本與診斷文字的 GitHub 回報表單，你只要按送出；沒有 GitHub 帳號就按「複製診斷文字」（裡面沒有帳號、聯絡人、藍牙名稱）。第一次分流順利跑約 10 分鐘會問一次「能用嗎」，分流失敗時會提示一鍵附診斷回報。
+主畫面的「回報問題」「能用！」會用瀏覽器開一份已填好機型、系統、版本、診斷文字（App 當掉過就連同它自己的程式堆疊）的 GitHub 回報表單，你只要按送出；沒有 GitHub 帳號就按「複製診斷文字」（裡面沒有帳號、聯絡人、藍牙名稱）。第一次分流順利跑約 10 分鐘會問一次「能用嗎」，分流失敗或上次 App 當掉時會提示一鍵附診斷回報。
 **新版提示**：開 App 時每天最多查一次 GitHub 發布頁，有新版就在主畫面頂端顯示卡片（「看更新內容」開發布頁、「這版先不提醒」）；**fdroid／GitHub 版只提示、不會自己下載或安裝**，可在主畫面關掉；Play 版沒有這功能（由 Play 更新）。
-The main screen's "Report a problem" and "It works!" open a pre-filled GitHub report form (phone, ROM, version, diagnostics) in your browser; you only press Submit. No GitHub account? Tap "Copy diagnostics" (no accounts, contacts or Bluetooth names in it). After the first clean 10 minutes of splitting the app asks once whether it works, and when routing fails it offers a one-tap report with diagnostics.
+The main screen's "Report a problem" and "It works!" open a pre-filled GitHub report form (phone, ROM, version, diagnostics and, after a crash, the app's own stack trace) in your browser; you only press Submit. No GitHub account? Tap "Copy diagnostics" (no accounts, contacts or Bluetooth names in it). After the first clean 10 minutes of splitting the app asks once whether it works, and when routing fails or the app crashed last time it offers a one-tap report with diagnostics.
 **New-version hint**: when you open the app it looks at the GitHub releases at most once a day and shows a card on top if there is a newer version ("What's new" opens the release page, "Skip this version" hides it). **The fdroid / GitHub build only tells you; it never downloads or installs anything by itself**, and it can be switched off on the main screen. The Play build does not have it (Google Play updates the app).
 
 ## 自己編譯 / Build

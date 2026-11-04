@@ -23,7 +23,7 @@ object Diag {
 
     fun info(c: Context) = Report.DiagInfo(
         Build.BRAND, Build.MODEL, Build.DISPLAY, Build.VERSION.RELEASE, Build.VERSION.SDK_INT,
-        versionName(c), Dist.flavor, mode(c), shizuku(), audioTypes(c), AppLog.tail())
+        versionName(c), Dist.flavor, mode(c), shizuku(), audioTypes(c), AppLog.tail(), Crash.saved(c))
 
     fun text(c: Context): String = Report.diagnostics(info(c))
 
@@ -35,4 +35,6 @@ object Diag {
     fun worksUrl(c: Context): String = Report.worksUrl(device(), rom(), version(c), mode(c), "Reported from the app's \"It works!\" button.")
     /** Problem report; notes = diagnostics (called from background threads too: collecting is read-only) */
     fun problemUrl(c: Context): String = Report.problemUrl(device(), rom(), version(c), mode(c), "What went wrong:\n\n\nDiagnostics:\n" + text(c))
+    /** 0.5.4: report of the last crash (the diagnostics carry its stack trace, see [Crash]) */
+    fun crashUrl(c: Context): String = Report.crashUrl(device(), rom(), version(c), "What you were doing when it crashed:\n\n\nDiagnostics:\n" + text(c))
 }

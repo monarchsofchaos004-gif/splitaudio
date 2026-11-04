@@ -24,6 +24,8 @@ object Report {
         val shizuku: String,
         val audioTypes: List<String>,
         val log: List<String>,
+        /** 0.5.4: the saved text of the last crash ([Crash]); null = none */
+        val crash: String? = null,
     )
 
     fun deviceName(brand: String, model: String): String {
@@ -73,6 +75,7 @@ object Report {
         append("Mode: ").append(i.mode).append('\n')
         append("Shizuku: ").append(i.shizuku).append('\n')
         append("Audio output device types: ").append(if (i.audioTypes.isEmpty()) "none" else i.audioTypes.joinToString(", ")).append('\n')
+        append(Crash.section(i.crash))   // before the log: the top of a trace must survive the URL length cut
         append("Recent log:\n")
         val tail = i.log.takeLast(LOG_LINES)
         if (tail.isEmpty()) append("  (empty)\n") else tail.forEach { append("  ").append(it.take(300)).append('\n') }
@@ -119,4 +122,8 @@ object Report {
         val (s, c, v) = fields(mode, BROKEN)
         return issueUrl("[device] $device: not working", device, rom, version, s, c, v, notes)
     }
+
+    /** 0.5.4: report after a crash; the modes stay "not tested" (a crash says nothing about them) */
+    fun crashUrl(device: String, rom: String, version: String, notes: String): String =
+        issueUrl("[device] $device: crash", device, rom, version, UNTESTED, UNTESTED, UNTESTED, notes)
 }

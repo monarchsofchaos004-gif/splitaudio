@@ -118,6 +118,8 @@
     <string name="fail_hint">If the split is working right now, just close this: it was probably a hiccup while starting. Report only if it keeps failing.</string>
     <string name="n_fail_title">Something went wrong</string>
     <string name="n_fail_text">Tap to report it with diagnostics.</string>
+    <string name="crash_title">SplitAudio crashed last time. Report it with the crash details?</string>
+    <string name="crash_hint">The crash details (the app\'s own stack trace, no personal data) are attached to the report automatically.</string>
     <string name="upd_title">New version %1$s</string>
     <string name="upd_whatsnew">What\'s new</string>
     <string name="upd_skip">Skip this version</string>

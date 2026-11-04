@@ -124,4 +124,17 @@ class RouteTest {
         assertFalse(Route.hasPid("empty map"))
         assertFalse(Route.hasPid(""))
     }
+
+    @Test fun sha256_knownVector() = assertEquals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", Route.sha256("abc".toByteArray()))
+
+    @Test fun verifyOk_everyFileMustMatch() {
+        val h = Route.sha256("abc".toByteArray()); val g = Route.sha256("def".toByteArray())
+        val exp = mapOf("approute.dex" to h, "approute.sh" to g)
+        assertTrue(Route.verifyOk("$h  /data/local/tmp/approute.dex\n$g  /data/local/tmp/approute.sh\n", exp))
+        assertTrue(Route.verifyOk("$g *approute.sh\n$h  approute.dex", exp))                                     // 順序／"*" 二進位記號／純檔名都可以
+        assertFalse(Route.verifyOk("$h  /data/local/tmp/approute.dex\n", exp))                                    // 少一個檔
+        assertFalse(Route.verifyOk("$h  /data/local/tmp/approute.dex\n$h  /data/local/tmp/approute.sh\n", exp))  // 雜湊不對
+        assertFalse(Route.verifyOk("sha256sum: /data/local/tmp/approute.dex: No such file or directory", exp))
+        assertFalse(Route.verifyOk("", exp)); assertFalse(Route.verifyOk("$h  approute.dex", emptyMap()))
+    }
 }

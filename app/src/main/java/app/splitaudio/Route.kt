@@ -129,18 +129,36 @@ object Route {
     /** 純邏輯：approute.sh start／startmap 的輸出有帶 pid（路由程式起來了）嗎 */
     fun hasPid(out: String): Boolean = Regex("(started|already) pid=\\d+").containsMatchIn(out)
 
+    /** 純邏輯：單一檔案的 sha256（十六進位） */
+    fun sha256(data: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(data).joinToString("") { "%02x".format(it) }
+
+    /** 純邏輯（0.5.4）：手機上 `sha256sum 檔1 檔2` 的輸出對上我們剛寫進去的內容嗎？每個預期檔都要出現且雜湊一樣（多出來的行不管；路徑只比檔名）。 */
+    fun verifyOk(sha256sumOut: String, expected: Map<String, String>): Boolean {
+        val seen = HashMap<String, String>()
+        for (l in sha256sumOut.lines()) {
+            val m = Regex("^([0-9a-f]{64})\\s+\\*?(\\S+)$").find(l.trim()) ?: continue
+            seen[m.groupValues[2].substringAfterLast('/')] = m.groupValues[1]
+        }
+        return expected.isNotEmpty() && expected.all { (n, h) -> seen[n.substringAfterLast('/')] == h }
+    }
+
     /** 把 assets 寫到 /data/local/tmp（先寫 .new 再改名：正在跑的 AppRoute 還拿著舊檔，不能原地覆蓋）。成功回 null。
-     *  先比對手機上 approute.ver 記的指紋（dex＋sh 的 sha256），一樣就略過；兩個檔任一個不見了也重寫。
+     *  先比對手機上 approute.ver 記的指紋（dex＋sh 的 sha256），一樣就略過（[force]＝不信 .ver，一律重寫）；兩個檔任一個不見了也重寫。
+     *  0.5.4：寫完先 sha256sum 讀回來對，對了才記 .ver（曾有一支手機 .ver 是新的、dex／sh 卻是舊的：路由一直答 err，卻因 .ver 對得上永遠不重部署）。
      *  內容有變＝App 更新了：寫完新檔把還在跑的舊路由停掉（舊版的指令口／規則跟新版不同，新版問不到它），之後由監看服務照新檔重起。 */
-    @Synchronized fun deploy(ctx: Context): String? {
+    @Synchronized fun deploy(ctx: Context, force: Boolean = false): String? {
         val files = listOf("approute.dex", "approute.sh").map { n -> n to ctx.assets.open(n).use { it.readBytes() } }
         val ver = fingerprint(files)
-        val have = Backends.run("[ -s $D/approute.dex ] && [ -s $D/approute.sh ] && cat $D/approute.ver", 10)
-        if (have.first == 0 && sameVersion(have.second, ver)) return null
+        if (!force) {
+            val have = Backends.run("[ -s $D/approute.dex ] && [ -s $D/approute.sh ] && cat $D/approute.ver", 10)
+            if (have.first == 0 && sameVersion(have.second, ver)) return null
+        }
         for ((n, data) in files) {
             val a = Backends.writeFile("$D/$n", data)
             if (a.first != 0) return "deploy_fail:${a.first} ${a.second.take(60)}"
         }
+        val sums = Backends.run("sha256sum " + files.joinToString(" ") { "$D/${it.first}" }, 15)
+        if (sums.first != 0 || !verifyOk(sums.second, files.associate { it.first to sha256(it.second) })) return "deploy_fail:verify ${sums.second.trim().take(60)}"
         val v = Backends.writeFile("$D/approute.ver", ver.toByteArray())
         if (v.first != 0) return "deploy_fail:${v.first} ${v.second.take(60)}"
         Backends.run(sh(ctx, "stop"), 15)
@@ -151,10 +169,12 @@ object Route {
     @Synchronized fun start(ctx: Context): String {
         val st = query(ctx, "state")
         if (isAlive(st.reply)) return "already".also { lastStart = it }
-        deploy(ctx)?.let { return it.also { lastStart = it } }
+        // st.reply 是別的字（0.4 以前沒有 token 的舊路由把 auth 那行當指令回 err；或手機上的 dex／sh 跟 .ver 對不起來）：
+        // 0.5.4 起不信 .ver，整套重寫、把它停掉（deploy 收尾的 stop），再起新的。
+        val stale = st.reply != null
+        deploy(ctx, force = stale)?.let { return it.also { lastStart = it } }
         // st.error == DENIED：有路由在跑但它是別的 token／uid 起的（重裝前的舊路由，或同時裝了另一個 SplitAudio 版本）。不去殺它——兩個版本互殺會一直重啟、聲音一直閃；
         // 舊路由藍牙斷 2 分／音樂停 10 分會自己結束，或按「停止分流」（stop 對任何 uid 起的都有效）。下面 approute.sh start 會回 already，結果文字會註明 denied。
-        // st.reply 是別的字（0.4 以前沒有 token 的舊路由會把 auth 那行當指令回 err）：上面的 deploy 內容有變會把它停掉，再起新的。
         val custom = Outputs.custom(ctx)
         if (custom) {
             if (!Outputs.hasAny(ctx)) return "no_apps".also { lastStart = it }

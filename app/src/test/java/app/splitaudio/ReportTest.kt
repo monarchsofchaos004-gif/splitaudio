@@ -99,4 +99,18 @@ class ReportTest {
         assertEquals("telephony", Report.deviceTypeName(android.media.AudioDeviceInfo.TYPE_TELEPHONY))   // 18
         assertEquals("type_9999", Report.deviceTypeName(9999))
     }
+
+    @Test fun crashUrl_titleAndModesUntested() {
+        val u = Report.crashUrl("Pixel 8", "AP2A, Android 14 (API 34)", "0.5.4 (fdroid)", "trace")
+        assertTrue(u.contains("title=%5Bdevice%5D%20Pixel%208%3A%20crash"))
+        assertTrue(u.contains("&simple=not%20tested&custom=not%20tested&volkeys=not%20tested&"))
+    }
+
+    @Test fun diagnostics_crashBlockOnlyWhenThereIsOne() {
+        assertFalse(Report.diagnostics(info(emptyList())).contains("Last crash"))
+        val d = Report.diagnostics(Report.DiagInfo("Xiaomi", "x", "d", "16", 36, "0.5.4", "fdroid", "simple", "s", emptyList(), emptyList(),
+            "time=5\nversion=0.5.4\nthread=main\njava.lang.NullPointerException"))
+        assertTrue(d.contains("Last crash:\n  time=5\n")); assertTrue(d.contains("  java.lang.NullPointerException\n"))
+        assertTrue(d.indexOf("Last crash") < d.indexOf("Recent log"))
+    }
 }

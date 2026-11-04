@@ -22,8 +22,10 @@ object Health {
 
     fun successDue(start: Long, now: Long, shown: Boolean): Boolean = !shown && start > 0L && now >= start && now - start >= STREAK_MS
 
-    /** A [Route.start] result that did not lead to a running rule: anything except "already" / "no_apps" (nothing to route). */
-    fun isFailure(startResult: String): Boolean = startResult != "already" && startResult != "no_apps" && startResult.isNotBlank()
+    /** A [Route.start] that left no router to talk to: anything except "already" / "no_apps" (nothing to route) / blank (nothing ran).
+     *  0.5.4: when the router answers ([routerAlive]) it is only waiting for the music app, whatever the start text says: not a failure (#12). */
+    fun isFailure(startResult: String, routerAlive: Boolean): Boolean =
+        !routerAlive && startResult != "already" && startResult != "no_apps" && startResult.isNotBlank()
 
     fun shouldNotifyFailure(count: Int, lastNotify: Long, now: Long): Boolean =
         count >= FAIL_NEED && (lastNotify <= 0L || now < lastNotify || now - lastNotify >= NOTIFY_GAP_MS)

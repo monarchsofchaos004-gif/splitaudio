@@ -119,11 +119,14 @@ class MonitorService : Service() {
         }.start()
     }
 
-    /** Route.start was just run ([r] = its result): split is on -> fine; otherwise a failure (route command error / rule did not appear) goes to [Health] */
+    /** Route.start was just run ([r] = its result): split is on -> fine; the router answers but the rule is not on yet -> it is only waiting
+     *  for the music app (0.5.4: not a failure, #12); no router to talk to -> a failure (route command error / nothing started) goes to [Health] */
     private fun afterStart(r: String) {
-        if (ruleOnNoted()) { setState(getString(R.string.s_split)); return }
-        if (Health.isFailure(r)) Health.noteFailure(applicationContext, r)
-        setState(Dist.startResultText(this, r))
+        val st = Route.ask(this, "state")
+        if (st == "on") { Health.noteOn(applicationContext); noteSplit(); setState(getString(R.string.s_split)); return }
+        val alive = Route.isAlive(st)
+        if (Health.isFailure(r, alive)) Health.noteFailure(applicationContext, r)
+        setState(if (alive) getString(if (Outputs.custom(this)) R.string.s_custom_wait else R.string.s_router_wait) else Dist.startResultText(this, r))
     }
 
     /** No usable backend: tell the notification; if Shizuku is running but its permission was refused, that is a failure to report */

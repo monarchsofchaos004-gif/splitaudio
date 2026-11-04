@@ -118,6 +118,8 @@
     <string name="fail_hint">如果現在分流是正常的，直接關掉就好，大概只是啟動時的一下子失敗；一直失敗才回報。</string>
     <string name="n_fail_title">出問題了</string>
     <string name="n_fail_text">點一下，附上診斷文字回報。</string>
+    <string name="crash_title">SplitAudio 上次當掉了，要附當機記錄回報嗎？</string>
+    <string name="crash_hint">會自動附上當機記錄（App 自己的程式堆疊，不含個人資料）。</string>
     <string name="upd_title">有新版本 %1$s</string>
     <string name="upd_whatsnew">看更新內容</string>
     <string name="upd_skip">這版先不提醒</string>

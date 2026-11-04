@@ -1,0 +1,1 @@
+Fewer false "something went wrong" prompts: a helper that has started and is only waiting for the music app no longer counts as a failure (#12). After a crash the app keeps its own stack trace and offers a one-tap report with it attached (#11). The routing helper's files are verified after deployment and a stale helper is replaced automatically.

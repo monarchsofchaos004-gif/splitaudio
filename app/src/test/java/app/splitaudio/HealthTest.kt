@@ -22,9 +22,12 @@ class HealthTest {
     }
 
     @Test fun failureClassification() {
-        assertTrue(Health.isFailure("start rc=1 boom")); assertTrue(Health.isFailure("start rc=0 started pid=5")); assertTrue(Health.isFailure("map_fail:1 x"))
-        assertTrue(Health.isFailure("deploy_fail:-2 no_backend"))
-        assertFalse(Health.isFailure("already")); assertFalse(Health.isFailure("no_apps")); assertFalse(Health.isFailure(""))
+        assertTrue(Health.isFailure("start rc=1 boom", false)); assertTrue(Health.isFailure("start rc=0 started pid=5", false)); assertTrue(Health.isFailure("map_fail:1 x", false))
+        assertTrue(Health.isFailure("deploy_fail:-2 no_backend", false))
+        assertFalse(Health.isFailure("already", false)); assertFalse(Health.isFailure("no_apps", false)); assertFalse(Health.isFailure("", false))
+        // 0.5.4 (#12): the router answers = it is only waiting for the music app -> never a failure, whatever the start text says
+        assertFalse(Health.isFailure("start rc=0 11-03 10:31:01 control port 127.0.0.1:47821, owner uid 11302", true))
+        assertFalse(Health.isFailure("start rc=1 boom", true))
     }
 
     @Test fun notifyNeedsThreeInARowAndRateLimit() {
