@@ -15,6 +15,10 @@ Legend: ✅ works · ⚠️ works with notes · ❌ does not work · ❓ unteste
 
 ## How to add a row
 
+**Easiest (0.5.6 and later): tap "It works!" or "Report a problem" in the app.** No account needed: the app sends the
+diagnostics (no accounts, contacts or Bluetooth names) and a maintainer adds your row, with you credited. The steps
+below are the manual way, for example when you want to write the row yourself.
+
 1. Install the latest release and try **Simple** mode (music app → Bluetooth, everything else → speaker) and, if you like, **Custom** mode.
 2. Edit this file on GitHub (pencil icon) and add one line to the table. Keep the columns in order; use ❓ for anything you did not test.
 3. Open the pull request. A maintainer merges it, usually within a day. Partial rows are welcome.
