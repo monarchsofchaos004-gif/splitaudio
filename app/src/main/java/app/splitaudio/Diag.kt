@@ -32,7 +32,8 @@ object Diag {
     private fun version(c: Context) = versionName(c) + " (" + Dist.flavor + ")"
 
     fun deviceLabel(): String = device()
-    fun worksUrl(c: Context): String = Report.worksUrl(device(), rom(), version(c), mode(c), "Reported from the app's \"It works!\" button.")
+    /** "It works!" report; 0.5.5: carries the diagnostics too (mode, device types, recent log), so a "works" row says what was actually tested */
+    fun worksUrl(c: Context): String = Report.worksUrl(device(), rom(), version(c), mode(c), "Reported from the app's \"It works!\" button.\n\nDiagnostics:\n" + text(c))
     /** Problem report; notes = diagnostics (called from background threads too: collecting is read-only) */
     fun problemUrl(c: Context): String = Report.problemUrl(device(), rom(), version(c), mode(c), "What went wrong:\n\n\nDiagnostics:\n" + text(c))
     /** 0.5.4: report of the last crash (the diagnostics carry its stack trace, see [Crash]) */

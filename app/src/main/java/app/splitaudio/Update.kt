@@ -67,7 +67,13 @@ object Update {
 
     private fun sp(c: Context) = c.getSharedPreferences("update", Context.MODE_PRIVATE)
 
-    fun enabled(c: Context) = Dist.updateCheck && sp(c).getBoolean("enabled", true)
+    /** F-Droid clients update the app themselves, so the GitHub query is skipped when one of them installed us (an environment rule, not a user setting) */
+    private val FDROID_CLIENTS = setOf("org.fdroid.fdroid", "org.fdroid.basic", "org.fdroid.fdroid.privileged", "com.looker.droidify", "com.machiav3lli.fdroid")
+    fun installedByFDroid(c: Context): Boolean =
+        try { c.packageManager.getInstallSourceInfo(c.packageName).installingPackageName in FDROID_CLIENTS } catch (_: Throwable) { false }
+
+    /** 0.5.5: the free build has no off switch (rule: nothing that helps the project can be switched off); the Play build keeps the setting */
+    fun enabled(c: Context) = Dist.updateCheck && !installedByFDroid(c) && (!Dist.feedbackDismissable || sp(c).getBoolean("enabled", true))
     fun setEnabled(c: Context, on: Boolean) { sp(c).edit().putBoolean("enabled", on).apply() }
 
     /** The release to show in the card (re-checked against the installed version), or null */

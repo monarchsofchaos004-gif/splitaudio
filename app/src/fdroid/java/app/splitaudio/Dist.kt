@@ -16,6 +16,10 @@ object Dist {
     /** New-version hint (fdroid: only links to the GitHub release page, never downloads or installs) */
     const val updateCheck = true
 
+    /** 免費版（用戶 2026-11-04 訂的「開源免費版決定權守則」）：對專案有幫助的機制——新版卡片、「能用嗎」卡、失敗／當機回報卡、新版檢查——
+     *  不給關閉或跳過的開關；卡片只在用戶回報後或狀況自己消失後才收起。false＝沒有「關閉」「這版先不提醒」「檢查新版本」。 */
+    val feedbackDismissable = false
+
     /** Pro 功能（自訂模式、每個 App 的音量）是否一律開放 */
     val proAlways = true
 

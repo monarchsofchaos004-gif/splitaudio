@@ -13,6 +13,7 @@ object Crash {
     const val FILE = "last_crash.txt"
     const val MAX_LINES = 30     // the top of a stack trace is the useful part
     const val MAX_CHARS = 4000
+    const val CARD_MS = 7 * 24 * 3600_000L   // the free build has no Close button: the card goes away by itself after a week
     private const val PREFS = "report"
     private const val KEY_DISMISSED = "crash_dismissed"
 
@@ -31,8 +32,9 @@ object Crash {
     /** Pure: the "time=" line of a saved text -> ms (0 when there is none) */
     fun timeOf(saved: String?): Long = saved?.lineSequence()?.firstOrNull { it.startsWith("time=") }?.substring(5)?.toLongOrNull() ?: 0L
 
-    /** Pure: show the "it crashed last time" card? A crash the user already reported or closed ([dismissedAt] = its time) is not asked about again. */
-    fun cardDue(savedAt: Long, dismissedAt: Long): Boolean = savedAt > 0L && savedAt != dismissedAt
+    /** Pure: show the "it crashed last time" card? A crash the user already reported or closed ([dismissedAt] = its time) is not asked about
+     *  again, and a crash older than [CARD_MS] is not either (the card must be able to go away without a Close button). */
+    fun cardDue(savedAt: Long, dismissedAt: Long, now: Long): Boolean = savedAt > 0L && savedAt != dismissedAt && now >= savedAt && now - savedAt < CARD_MS
 
     private fun file(c: Context) = File(c.filesDir, FILE)
     private fun sp(c: Context) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -49,7 +51,7 @@ object Crash {
 
     fun saved(c: Context): String? = try { file(c).takeIf { it.isFile }?.readText() } catch (_: Throwable) { null }
     fun savedAt(c: Context): Long = timeOf(saved(c))
-    fun cardVisible(c: Context): Boolean = cardDue(savedAt(c), sp(c).getLong(KEY_DISMISSED, 0L))
+    fun cardVisible(c: Context, now: Long = System.currentTimeMillis()): Boolean = cardDue(savedAt(c), sp(c).getLong(KEY_DISMISSED, 0L), now)
     /** The user reported or closed the card: remember which crash, so the same one is not asked about again */
     fun dismiss(c: Context) { sp(c).edit().putLong(KEY_DISMISSED, savedAt(c)).apply() }
 }

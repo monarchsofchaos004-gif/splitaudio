@@ -23,6 +23,9 @@ object Dist {
     /** New-version hint (play: off, Google Play updates the app) */
     const val updateCheck = false
 
+    /** 付費版：回報卡可以關、新版提示可以跳過（免費版那條「不給關閉」的規則不套用在這裡） */
+    val feedbackDismissable = true
+
     /** Pro 功能（自訂模式、每個 App 的音量）是否一律開放 */
     val proAlways = false
 

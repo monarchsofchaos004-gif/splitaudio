@@ -116,6 +116,7 @@
     <string name="fail_title">出問題了，一鍵附診斷回報</string>
     <string name="fail_report">附診斷回報</string>
     <string name="fail_hint">如果現在分流是正常的，直接關掉就好，大概只是啟動時的一下子失敗；一直失敗才回報。</string>
+    <string name="fail_hint_auto">如果現在分流是正常的，這張卡片會自己消失，大概只是啟動時的一下子失敗；一直失敗再回報。</string>
     <string name="n_fail_title">出問題了</string>
     <string name="n_fail_text">點一下，附上診斷文字回報。</string>
     <string name="crash_title">SplitAudio 上次當掉了，要附當機記錄回報嗎？</string>

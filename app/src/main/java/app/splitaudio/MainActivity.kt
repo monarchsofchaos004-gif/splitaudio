@@ -90,34 +90,36 @@ class MainActivity : Activity() {
             tvUpd = text("", 16f, C_TEXT, true).apply { setPadding(0, 0, 0, dp(4)) }
             addView(tvUpd)
             addView(btn(getString(R.string.upd_whatsnew), C_BLUE) { updUrl?.let { openUrl(it) } })
-            addView(btn(getString(R.string.upd_skip), C_GREY) { updTag?.let { Update.skip(this@MainActivity, it) }; renderTop() })
+            // 0.5.5 免費版：沒有「這版先不提醒」，卡片一直提示到更新為止（Dist.feedbackDismissable）
+            if (Dist.feedbackDismissable) addView(btn(getString(R.string.upd_skip), C_GREY) { updTag?.let { Update.skip(this@MainActivity, it) }; renderTop() })
         }
         root.addView(updCard)
-        // 第一次分流順利跑了約 10 分鐘 → 只問一次「在你的 <機型> 能用？」
+        // 第一次分流順利跑了約 10 分鐘 → 只問一次「在你的 <機型> 能用？」；免費版沒有「關閉」，改成「能用！」「回報問題」兩條路都收資料
         succCard = card(Color.WHITE).apply {
             visibility = View.GONE
             tvSucc = text("", 16f, C_TEXT, true).apply { setPadding(0, 0, 0, dp(4)) }
             addView(tvSucc)
             addView(btn(getString(R.string.btn_works), C_GREEN) { Health.dismissSuccess(this@MainActivity); openUrl(Diag.worksUrl(this@MainActivity)); renderTop() })
-            addView(btn(getString(R.string.btn_close), C_GREY) { Health.dismissSuccess(this@MainActivity); renderTop() })
+            if (Dist.feedbackDismissable) addView(btn(getString(R.string.btn_close), C_GREY) { Health.dismissSuccess(this@MainActivity); renderTop() })
+            else addView(btn(getString(R.string.btn_report), C_RED) { Health.dismissSuccess(this@MainActivity); openUrl(Diag.problemUrl(this@MainActivity)); renderTop() })
         }
         root.addView(succCard)
-        // 偵測到失敗 → 一鍵帶診斷回報
+        // 偵測到失敗 → 一鍵帶診斷回報；免費版沒有「關閉」（分流又正常或 24 小時後卡片自己消失）
         failCard = card(Color.WHITE).apply {
             visibility = View.GONE
             addView(text("⚠ " + getString(R.string.fail_title), 16f, C_RED, true).apply { setPadding(0, 0, 0, dp(4)) })
-            addView(text(getString(R.string.fail_hint), 13f, C_GREY).apply { setPadding(0, 0, 0, dp(6)) })
+            addView(text(getString(if (Dist.feedbackDismissable) R.string.fail_hint else R.string.fail_hint_auto), 13f, C_GREY).apply { setPadding(0, 0, 0, dp(6)) })
             addView(btn(getString(R.string.fail_report), C_RED) { openUrl(Diag.problemUrl(this@MainActivity)) })
-            addView(btn(getString(R.string.btn_close), C_GREY) { Health.dismissFailure(this@MainActivity); renderTop() })
+            if (Dist.feedbackDismissable) addView(btn(getString(R.string.btn_close), C_GREY) { Health.dismissFailure(this@MainActivity); renderTop() })
         }
         root.addView(failCard)
-        // 0.5.4：上次 App 當掉（Crash 存了堆疊）→ 一鍵附當機記錄回報；回報或關閉後同一次當機不再問
+        // 0.5.4：上次 App 當掉（Crash 存了堆疊）→ 一鍵附當機記錄回報；回報後同一次當機不再問；免費版沒有「關閉」（7 天後自己消失）
         crashCard = card(Color.WHITE).apply {
             visibility = View.GONE
             addView(text("⚠ " + getString(R.string.crash_title), 16f, C_RED, true).apply { setPadding(0, 0, 0, dp(4)) })
             addView(text(getString(R.string.crash_hint), 13f, C_GREY).apply { setPadding(0, 0, 0, dp(6)) })
             addView(btn(getString(R.string.fail_report), C_RED) { Crash.dismiss(this@MainActivity); openUrl(Diag.crashUrl(this@MainActivity)); renderTop() })
-            addView(btn(getString(R.string.btn_close), C_GREY) { Crash.dismiss(this@MainActivity); renderTop() })
+            if (Dist.feedbackDismissable) addView(btn(getString(R.string.btn_close), C_GREY) { Crash.dismiss(this@MainActivity); renderTop() })
         }
         root.addView(crashCard)
 
@@ -217,11 +219,13 @@ class MainActivity : Activity() {
         help.addView(btn(getString(R.string.btn_copy_diag), C_GREY) { copyDiag() })
         if (Dist.updateCheck) {
             help.addView(divider())
-            help.addView(Switch(this).apply {
+            // 0.5.5 免費版：新版檢查沒有開關（只說明它做什麼）；付費版保留開關
+            if (Dist.feedbackDismissable) help.addView(Switch(this).apply {
                 text = getString(R.string.upd_switch); textSize = 15f; setTextColor(C_TEXT); setTypeface(typeface, Typeface.BOLD)
                 isChecked = Update.enabled(this@MainActivity)
                 setOnCheckedChangeListener { _, on -> Update.setEnabled(this@MainActivity, on); if (on) checkUpdate(); renderTop() }
             })
+            else help.addView(text(getString(R.string.upd_switch), 15f, C_TEXT, true))
             help.addView(text(getString(R.string.upd_switch_d), 13f, C_TEXT_2).apply { setPadding(0, 0, 0, dp(4)) })
         }
         root.addView(help)

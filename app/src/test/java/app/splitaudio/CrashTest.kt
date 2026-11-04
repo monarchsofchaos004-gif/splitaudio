@@ -24,8 +24,10 @@ class CrashTest {
         assertEquals("Last crash:\n  time=5\n  java.lang.NullPointerException\n", Crash.section("time=5\njava.lang.NullPointerException"))
     }
 
-    @Test fun cardDue_onlyForACrashNotYetDismissed() {
-        assertFalse(Crash.cardDue(0L, 0L)); assertTrue(Crash.cardDue(5L, 0L)); assertFalse(Crash.cardDue(5L, 5L)); assertTrue(Crash.cardDue(6L, 5L))
+    @Test fun cardDue_onlyForACrashNotYetDismissed_andNotOlderThanAWeek() {
+        assertFalse(Crash.cardDue(0L, 0L, 10L)); assertTrue(Crash.cardDue(5L, 0L, 10L)); assertFalse(Crash.cardDue(5L, 5L, 10L)); assertTrue(Crash.cardDue(6L, 5L, 10L))
+        assertTrue(Crash.cardDue(5L, 0L, 5L + Crash.CARD_MS - 1)); assertFalse(Crash.cardDue(5L, 0L, 5L + Crash.CARD_MS))   // 沒有關閉鈕：一週後自己消失
+        assertFalse(Crash.cardDue(50L, 0L, 10L))   // clock went backwards
     }
 
     @Test fun traceOf_hasTheExceptionAndAFrame() {

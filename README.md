@@ -27,7 +27,7 @@ Samsung-only). SplitAudio keeps **the music app on Bluetooth and sends every oth
 | shell 權限怎麼來 / Shell access | [Shizuku](https://shizuku.rikka.app/) | Shizuku，沒有就用內建 ADB 無線偵錯 / Shizuku, otherwise the built-in ADB client (Wireless debugging, one-time pairing) |
 | 功能 / Features | 全部免費 / everything free | 簡單模式免費；自訂模式與每個 App 音量是 Pro（買斷，裝好有 7 天試用；購買功能之後的版本開放）/ Simple mode free; custom mode and per-app volume are Pro (one-time purchase, 7-day trial; purchasing comes in a later version) |
 | 音量鍵（無障礙服務）/ Volume keys (accessibility) | 有（Android 13 以上）/ yes (Android 13+) | 沒有 / no |
-| `INTERNET` 權限 / permission | 有，本機 `127.0.0.1` 的指令口，加上每天最多一次查 GitHub 有沒有新版（可關）；沒有任何資料離開手機 / yes, the helper's local control port on `127.0.0.1` plus one GitHub releases query per day at most to look for a new version (can be switched off); no data leaves the phone | 有，連這支手機自己的 adbd 和本機指令口，沒有任何資料離開手機 / yes, to reach this phone's own adbd and the local control port; no data leaves the phone |
+| `INTERNET` 權限 / permission | 有，本機 `127.0.0.1` 的指令口，加上每天最多一次查 GitHub 有沒有新版（從 F-Droid 裝的不查）；沒有任何資料離開手機 / yes, the helper's local control port on `127.0.0.1` plus one GitHub releases query per day at most to look for a new version (skipped when installed by an F-Droid client); no data leaves the phone | 有，連這支手機自己的 adbd 和本機指令口，沒有任何資料離開手機 / yes, to reach this phone's own adbd and the local control port; no data leaves the phone |
 
 需求 / Requirements: Android 12（API 31）以上；音量鍵功能要 Android 13 以上（要讀系統的 VolumeInfo）。 Android 12 or newer; the volume keys need Android 13 or newer (they read the system's VolumeInfo).
 
@@ -164,9 +164,9 @@ The ticked apps stay on Bluetooth, everything else plays on the speaker. The def
 
 ## 回報與新版提示 / Reporting and update hint
 主畫面的「回報問題」「能用！」會用瀏覽器開一份已填好機型、系統、版本、診斷文字（App 當掉過就連同它自己的程式堆疊）的 GitHub 回報表單，你只要按送出；沒有 GitHub 帳號就按「複製診斷文字」（裡面沒有帳號、聯絡人、藍牙名稱）。第一次分流順利跑約 10 分鐘會問一次「能用嗎」，分流失敗或上次 App 當掉時會提示一鍵附診斷回報。
-**新版提示**：開 App 時每天最多查一次 GitHub 發布頁，有新版就在主畫面頂端顯示卡片（「看更新內容」開發布頁、「這版先不提醒」）；**fdroid／GitHub 版只提示、不會自己下載或安裝**，可在主畫面關掉；Play 版沒有這功能（由 Play 更新）。
+**新版提示**：開 App 時每天最多查一次 GitHub 發布頁，有新版就在主畫面頂端顯示卡片（「看更新內容」開發布頁；卡片會一直提示到你更新為止）；**fdroid／GitHub 版只提示、不會自己下載或安裝**；從 F-Droid 客戶端安裝的不查（由 F-Droid 更新）；Play 版沒有這功能（由 Play 更新）。免費版的回報卡片沒有「關閉」鈕：回報後、狀況自己消失（又正常了）或到期才收起——這些回報就是這個專案改進的依據。
 The main screen's "Report a problem" and "It works!" open a pre-filled GitHub report form (phone, ROM, version, diagnostics and, after a crash, the app's own stack trace) in your browser; you only press Submit. No GitHub account? Tap "Copy diagnostics" (no accounts, contacts or Bluetooth names in it). After the first clean 10 minutes of splitting the app asks once whether it works, and when routing fails or the app crashed last time it offers a one-tap report with diagnostics.
-**New-version hint**: when you open the app it looks at the GitHub releases at most once a day and shows a card on top if there is a newer version ("What's new" opens the release page, "Skip this version" hides it). **The fdroid / GitHub build only tells you; it never downloads or installs anything by itself**, and it can be switched off on the main screen. The Play build does not have it (Google Play updates the app).
+**New-version hint**: when you open the app it looks at the GitHub releases at most once a day and shows a card on top if there is a newer version ("What's new" opens the release page; the card stays until you update). **The fdroid / GitHub build only tells you; it never downloads or installs anything by itself.** It is skipped when the app was installed by an F-Droid client (F-Droid updates it), and the Play build does not have it (Google Play updates the app). The free build's report cards have no Close button: they go away once you report, once the situation resolves, or when they expire — those reports are what this project is improved from.
 
 ## 自己編譯 / Build
 JDK 17、Android SDK（`platforms;android-36`、任一版 `build-tools`，例如 `36.0.0`）、Gradle 8.9。JDK 17, Android SDK (`platforms;android-36` and any `build-tools`, e.g. `36.0.0`), Gradle 8.9:
@@ -183,9 +183,9 @@ play 版的內建 ADB 函式庫（libadb-android）從 JitPack 下載，只有 p
 GitHub Actions 每次 push 都會從原始碼編出 APK（含路由小程式）。CI builds the APKs (including the helper dex) from source on every push.
 
 ## 隱私 / Privacy
-不收集任何資料，沒有任何資料離開手機（唯一的對外連線：fdroid／GitHub 版開 App 時每天最多一次向 GitHub 查有沒有新版，只帶 User-Agent，可在主畫面關掉；Play 版沒有）。兩個版本都有 `INTERNET` 權限，除了上面那個可關的查新版，只用在這支手機自己身上：App 和小程式之間的本機（`127.0.0.1`）指令口（要帶 App 自己的隨機 token、而且對方 uid 要是本 App，其他 App 連不進），
+不收集任何資料，沒有任何資料離開手機（唯一的對外連線：fdroid／GitHub 版開 App 時每天最多一次向 GitHub 查有沒有新版，只帶 User-Agent；從 F-Droid 客戶端安裝的不查；Play 版沒有）。兩個版本都有 `INTERNET` 權限，除了上面那個查新版，只用在這支手機自己身上：App 和小程式之間的本機（`127.0.0.1`）指令口（要帶 App 自己的隨機 token、而且對方 uid 要是本 App，其他 App 連不進），
 以及 play 版連這支手機自己的 adbd（內建 ADB）。無障礙服務（fdroid 版）只攔音量鍵、只讀前景 App 的套件名稱，不讀畫面文字。
-Nothing is collected and no data leaves the phone (the only outgoing connection: the fdroid / GitHub build asks GitHub at most once a day, when you open the app, whether a newer version exists, sending only a User-Agent; it can be switched off on the main screen, and the Play build has none). Both builds have the `INTERNET` permission, but apart from that optional query it is only used on this phone itself: the local (`127.0.0.1`) control port
+Nothing is collected and no data leaves the phone (the only outgoing connection: the fdroid / GitHub build asks GitHub at most once a day, when you open the app, whether a newer version exists, sending only a User-Agent; it is skipped when the app was installed by an F-Droid client, and the Play build has none). Both builds have the `INTERNET` permission, but apart from that query it is only used on this phone itself: the local (`127.0.0.1`) control port
 between the app and its helper (every connection needs the app's own random token and must come from the app's uid, so other apps cannot use it), and, in the play build,
 the connection to this phone's own adbd (built-in ADB). The accessibility service (fdroid build) only filters volume keys and reads the foreground package name;
 it does not read screen text. See [SECURITY.md](SECURITY.md).

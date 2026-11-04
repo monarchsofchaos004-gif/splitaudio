@@ -116,6 +116,7 @@
     <string name="fail_title">Something went wrong, report it with diagnostics</string>
     <string name="fail_report">Report with diagnostics</string>
     <string name="fail_hint">If the split is working right now, just close this: it was probably a hiccup while starting. Report only if it keeps failing.</string>
+    <string name="fail_hint_auto">If the split is working right now, this card disappears by itself: it was probably a hiccup while starting. Report if it keeps failing.</string>
     <string name="n_fail_title">Something went wrong</string>
     <string name="n_fail_text">Tap to report it with diagnostics.</string>
     <string name="crash_title">SplitAudio crashed last time. Report it with the crash details?</string>
