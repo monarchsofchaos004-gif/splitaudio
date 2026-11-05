@@ -12,6 +12,10 @@ Legend: ✅ works · ⚠️ works with notes · ❌ does not work · ❓ unteste
 | ASUS | Zenfone 10 | Android 14 | 0.3.x | ⚠️ | ⚠️ | ❓ | Routing works; the two outputs have separate volumes, so Bluetooth volume can look like it "drops". | [#5](https://github.com/monarchsofchaos004-gif/splitaudio/issues/5) |
 | OnePlus | OnePlus 11 5G | OxygenOS / Android 14 | 0.3.x | ❌ | ⚠️ | ❓ | Simple mode did nothing (music app not on the default list); Custom mode routes, see the issue for details. | [#7](https://github.com/monarchsofchaos004-gif/splitaudio/issues/7) |
 | Samsung | (unspecified) | One UI | 0.2.x | ❌ | ❓ | ❓ | Reporter switched to Samsung's built-in *Separate app sound*. | [#2](https://github.com/monarchsofchaos004-gif/splitaudio/issues/2) |
+| OPPO | CPH2629 | ColorOS 16 / Android 16 | 0.5.6 | ✅ | ⚠️ | ❓ | Simple mode reported working. Custom mode with a wired USB headset: a problem was reported, details pending. | [#14](https://github.com/monarchsofchaos004-gif/splitaudio/issues/14), [#13](https://github.com/monarchsofchaos004-gif/splitaudio/issues/13) (in-app report) |
+| Google | Pixel 10 Pro XL | Android 17 | 0.5.6 | ❓ | ⚠️ | ✅ | Custom mode routes and the volume keys work; videos in other apps were reported to still pause the music with "Videos don't pause the music" on (being looked into). | [#17](https://github.com/monarchsofchaos004-gif/splitaudio/issues/17) (in-app report) |
+| Redmi | 2411DRN47I | Android 16 | 0.5.6 | ⚠️ | ❓ | ❓ | Reported working; Shizuku was not running when the report was sent, so it is waiting for a confirming report. | [#15](https://github.com/monarchsofchaos004-gif/splitaudio/issues/15) (in-app report) |
+| Redmi | 2303CRA44A | Android 15 | 0.5.6 | ⚠️ | ❓ | ❓ | Reported working; Shizuku was not running when the report was sent, so it is waiting for a confirming report. | [#16](https://github.com/monarchsofchaos004-gif/splitaudio/issues/16) (in-app report) |
 
 ## How to add a row
 
