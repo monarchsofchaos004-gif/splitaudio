@@ -197,6 +197,17 @@ object Route {
 
     fun stop(ctx: Context): String = Backends.run(sh(ctx, "stop"), 15).second.trim()
 
+    /** 0.5.7: the router's read-only audio-focus snapshot for the one-tap report ("approute.sh diag": the multi-audio-focus setting, the
+     *  mic switch, the focus stack, who is playing, the router's last log lines). Blocking (Shizuku): background threads only. */
+    fun diag(ctx: Context): List<String> = try {
+        if (!ShizukuBackend.alive() || !ShizukuBackend.granted()) listOf("(Shizuku is not running)")
+        else diagLines(Backends.run(sh(ctx, "diag"), 8).second)
+    } catch (_: Throwable) { listOf("(not available)") }
+
+    /** Pure: the diag output -> at most [Report.ROUTER_LINES] non-blank lines, each at most 160 characters */
+    fun diagLines(out: String): List<String> =
+        out.split('\n').map { it.trimEnd().take(160) }.filter { it.isNotBlank() }.take(Report.ROUTER_LINES).ifEmpty { listOf("(no answer)") }
+
     /** 「開影片不打斷音樂」（Android 內建 multi audio focus）：這個系統設定 App 讀不到，經 [Backends] 讀。
      *  回 "on"／"off"／"off_user"（用戶按過關＝分流不會自動打開）／null（讀不到） */
     fun multiFocusState(): String? {

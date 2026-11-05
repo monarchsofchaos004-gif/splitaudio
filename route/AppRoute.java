@@ -37,6 +37,7 @@ public class AppRoute {
         if (a.length > 1 && a[0].equals("map")) { mapMain(a[1]); return; }
         if (a.length > 1 && a[0].equals("mixer")) { mixerMain(a[1]); return; }
         if (a.length > 0 && a[0].equals("players")) { for (int u : playingUids()) System.out.println(u); return; }
+        if (a.length > 0 && a[0].equals("diag")) { diagMain(); return; }   // 0.5.7: read-only audio-focus snapshot for the one-tap report
         if (a.length > 1 && a[0].equals("ask")) {
             StringBuilder sb = new StringBuilder();
             for (int i = 1; i < a.length; i++) sb.append(i > 1 ? " " : "").append(a[i]);
@@ -754,6 +755,57 @@ public class AppRoute {
             un.setAccessible(true); un.invoke(null, policy);
         } catch (Throwable e) { log("unregister fail " + e); }
         policy = null;
+    }
+
+    // 0.5.7 "diag": a read-only snapshot for the one-tap report, so a "something pauses my music" report can be understood without
+    //   asking questions: the audio mode, the audio focus stack (top first: package, what it asked for, what it lost) and who is playing.
+    //   Nothing here changes anything on the phone. Lines are short text (package names and numbers only).
+    static final int DIAG_MAX = 8;
+    static void diagMain() {
+        try {
+            Object as = Class.forName("android.media.IAudioService$Stub").getMethod("asInterface", android.os.IBinder.class)
+                .invoke(null, Class.forName("android.os.ServiceManager").getMethod("getService", String.class).invoke(null, "audio"));
+            try { System.out.println("audio mode=" + as.getClass().getMethod("getMode").invoke(as)); }
+            catch (Throwable e) { System.out.println("audio mode=? " + e.getClass().getSimpleName()); }
+            try {
+                java.util.List<?> l = (java.util.List<?>) as.getClass().getMethod("getFocusStack").invoke(as);
+                System.out.println("focus stack=" + l.size());
+                int n = 0;
+                for (Object f : l) {
+                    if (n++ >= DIAG_MAX) break;
+                    Object loss = "?";
+                    try { loss = f.getClass().getMethod("getLossReceived").invoke(f); } catch (Throwable e) { }
+                    System.out.println(diagFocusLine(String.valueOf(f.getClass().getMethod("getPackageName").invoke(f)),
+                        (Integer) f.getClass().getMethod("getGainRequest").invoke(f), String.valueOf(loss)));
+                }
+            } catch (Throwable e) { System.out.println("focus stack=? " + e.getClass().getSimpleName()); }
+            try {
+                java.util.List<?> l = (java.util.List<?>) as.getClass().getMethod("getActivePlaybackConfigurations").invoke(as);
+                int n = 0;
+                for (Object c : l) {
+                    if ((Integer) c.getClass().getMethod("getPlayerState").invoke(c) != 2 /* STARTED */) continue;
+                    if (n++ >= DIAG_MAX) continue;
+                    int uid = (Integer) c.getClass().getMethod("getClientUid").invoke(c);
+                    System.out.println("  playing " + pkgOf(uid) + " uid=" + uid);
+                }
+                System.out.println("playing=" + n);
+            } catch (Throwable e) { System.out.println("playing=? " + e.getClass().getSimpleName()); }
+        } catch (Throwable e) { System.out.println("diag err " + e.getClass().getSimpleName()); }
+    }
+    /** Pure: one focus stack line of the diag output. gain: 1 = wants to keep the audio, 2 = for a moment, 3 = for a moment and
+     *  others may duck, 4 = for a moment and alone */
+    static String diagFocusLine(String pkg, int gain, String loss) {
+        String g = gain == 1 ? "gain" : gain == 2 ? "transient" : gain == 3 ? "transient-may-duck" : gain == 4 ? "transient-exclusive" : "gain" + gain;
+        return "  focus " + pkg + " " + g + " loss=" + loss;
+    }
+    /** First package name of a uid ("?" when it cannot be looked up) */
+    static String pkgOf(int uid) {
+        try {
+            Object pm = Class.forName("android.content.pm.IPackageManager$Stub").getMethod("asInterface", android.os.IBinder.class)
+                .invoke(null, Class.forName("android.os.ServiceManager").getMethod("getService", String.class).invoke(null, "package"));
+            String[] p = (String[]) pm.getClass().getMethod("getPackagesForUid", int.class).invoke(pm, uid);
+            return p == null || p.length == 0 ? "?" : p[0];
+        } catch (Throwable e) { return "?"; }
     }
 
     static void log(String s) { System.out.println(new java.text.SimpleDateFormat("MM-dd HH:mm:ss").format(new java.util.Date()) + " " + s); }

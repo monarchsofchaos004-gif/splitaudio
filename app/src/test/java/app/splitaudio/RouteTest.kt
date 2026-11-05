@@ -127,6 +127,14 @@ class RouteTest {
 
     @Test fun sha256_knownVector() = assertEquals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", Route.sha256("abc".toByteArray()))
 
+    @Test fun diagLines_shortNonBlankAndBounded() {
+        assertEquals(listOf("(no answer)"), Route.diagLines("\n  \n"))
+        val out = Route.diagLines("multi_audio_focus_enabled=1\n\nmickeep=on  \n" + (1..100).joinToString("\n") { "l$it" } + "\n" + "y".repeat(500))
+        assertEquals("multi_audio_focus_enabled=1", out[0]); assertEquals("mickeep=on", out[1])
+        assertEquals(Report.ROUTER_LINES, out.size)
+        assertEquals(160, Route.diagLines("y".repeat(500))[0].length)
+    }
+
     @Test fun verifyOk_everyFileMustMatch() {
         val h = Route.sha256("abc".toByteArray()); val g = Route.sha256("def".toByteArray())
         val exp = mapOf("approute.dex" to h, "approute.sh" to g)

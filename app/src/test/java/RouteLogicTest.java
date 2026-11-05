@@ -280,6 +280,14 @@ public class RouteLogicTest {
     }
 
     // ---- voice typing / assistant: "mic doesn't pause the music" ----
+    @Test public void diagFocusLine_namesTheRequest() {
+        assertEquals("  focus com.spotify.music gain loss=0", AppRoute.diagFocusLine("com.spotify.music", 1, "0"));
+        assertEquals("  focus a.b transient loss=-2", AppRoute.diagFocusLine("a.b", 2, "-2"));
+        assertEquals("  focus a.b transient-may-duck loss=?", AppRoute.diagFocusLine("a.b", 3, "?"));
+        assertEquals("  focus a.b transient-exclusive loss=0", AppRoute.diagFocusLine("a.b", 4, "0"));
+        assertEquals("  focus a.b gain9 loss=0", AppRoute.diagFocusLine("a.b", 9, "0"));
+    }
+
     @Test public void micAction_truthTable() {
         // (newHolder, playedBefore, keepOn) -> 0 = nothing, 1 = only arm (press play once the holder is gone), 2 = press play at once and arm
         assertEquals(0, AppRoute.micAction(false, false, false));

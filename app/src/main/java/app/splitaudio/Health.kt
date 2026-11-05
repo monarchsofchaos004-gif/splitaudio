@@ -51,6 +51,16 @@ object Health {
         e.apply()
     }
 
+    const val CONFIRM_MS = 24 * 3600_000L   // 0.5.7: an "It works!" report counts as confirmed when the split was on within this long
+
+    /** Pure: the split was seen on recently enough for an "It works!" report to count as confirmed */
+    fun isRecent(lastOn: Long, now: Long): Boolean = lastOn > 0L && now >= lastOn && now - lastOn < CONFIRM_MS
+
+    /** When the split was last seen on (0 = never on this install) */
+    fun lastOn(c: Context): Long = sp(c).getLong("last_on", 0L)
+
+    fun recentlyOn(c: Context, now: Long = System.currentTimeMillis()): Boolean = isRecent(lastOn(c), now)
+
     /** Something went wrong: breaks the streak, counts, and (when it keeps failing) tells the user once in a while. */
     fun noteFailure(c: Context, reason: String, now: Long = System.currentTimeMillis()) {
         val p = sp(c)

@@ -23,9 +23,11 @@ object Diag {
         c.getSystemService(AudioManager::class.java).getDevices(AudioManager.GET_DEVICES_OUTPUTS).map { Report.deviceTypeName(it.type) }.sorted()
     } catch (_: Throwable) { emptyList() }
 
-    fun info(c: Context) = Report.DiagInfo(
+    /** [router] = also ask the router for its audio-focus snapshot (0.5.7; blocking, Shizuku): only from a background thread, i.e. the one-tap report */
+    fun info(c: Context, router: Boolean = false) = Report.DiagInfo(
         Build.BRAND, Build.MODEL, Build.DISPLAY, Build.VERSION.RELEASE, Build.VERSION.SDK_INT,
-        versionName(c), Dist.flavor, mode(c), shizuku(), audioTypes(c), AppLog.tail(), Crash.saved(c))
+        versionName(c), Dist.flavor, mode(c), shizuku(), audioTypes(c), AppLog.tail(), Crash.saved(c),
+        Report.agoText(Health.lastOn(c), System.currentTimeMillis()), if (router) Route.diag(c) else emptyList())
 
     fun text(c: Context): String = Report.diagnostics(info(c))
 

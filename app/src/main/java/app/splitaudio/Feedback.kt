@@ -71,7 +71,7 @@ object Feedback {
     fun send(c: Context, verdict: String, note: String = "", nick: String = "", done: (Boolean) -> Unit) {
         val app = c.applicationContext
         Thread {
-            val ok = try { post(endpoint(app), payload(Diag.info(app), verdict, note, nick), ua(app)) in 200..299 } catch (_: Exception) { false }
+            val ok = try { post(endpoint(app), payload(Diag.info(app, router = true), verdict, note, nick), ua(app)) in 200..299 } catch (_: Exception) { false }
             if (ok) sp(app).edit().putString("last_kind", verdict).putString("last_ver", Diag.versionName(app)).putLong("last_at", System.currentTimeMillis()).apply()
             AppLog.add("report " + verdict + (if (ok) " sent" else " failed"))
             Handler(Looper.getMainLooper()).post { done(ok) }

@@ -92,6 +92,28 @@ class ReportTest {
         assertTrue(d.contains("(empty)")); assertTrue(d.contains("Audio output device types: none"))
     }
 
+    @Test fun agoText_steps() {
+        val now = 1_000_000_000_000L
+        assertEquals("never", Report.agoText(0L, now)); assertEquals("never", Report.agoText(now + 1, now))
+        assertEquals("just now", Report.agoText(now - 59_000, now))
+        assertEquals("3 min ago", Report.agoText(now - 3 * 60_000L, now))
+        assertEquals("119 min ago", Report.agoText(now - 119 * 60_000L, now))
+        assertEquals("2 h ago", Report.agoText(now - 2 * 3600_000L, now))
+        assertEquals("3 d ago", Report.agoText(now - 3 * 86400_000L, now))
+    }
+
+    @Test fun diagnostics_lastOnAndRouterOnlyWhenGiven() {
+        val plain = Report.diagnostics(info(listOf("12:00:00 route: already")))
+        assertFalse(plain.contains("Split last active")); assertFalse(plain.contains("Router:"))
+        val i = Report.DiagInfo("Xiaomi", "M", "D", "16", 36, "0.5.7", "fdroid", "custom", "running=true", listOf("builtin_speaker"), listOf("12:00:00 state: Split"),
+            null, "3 min ago", (1..60).map { "r$it " + "x".repeat(300) })
+        val d = Report.diagnostics(i)
+        assertTrue(d.contains("Split last active: 3 min ago\n"))
+        assertTrue(d.indexOf("Router:\n") > d.indexOf("Recent log:\n"))
+        assertEquals(Report.ROUTER_LINES, Regex("\n  r\\d+ ").findAll(d).count())
+        assertTrue(d.lines().filter { it.startsWith("  r") }.all { it.length == 162 })
+    }
+
     @Test fun deviceTypeNames_areTypesNotNames() {
         assertEquals("bluetooth_a2dp", Report.deviceTypeName(android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP))
         assertEquals("builtin_speaker", Report.deviceTypeName(android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER))

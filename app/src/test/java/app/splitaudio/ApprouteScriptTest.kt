@@ -81,6 +81,18 @@ class ApprouteScriptTest {
         assertFalse(flag.exists())
     }
 
+    @Test fun diag_printsSettingSwitchRouterSnapshotAndLogTail() {
+        fake("settings", "echo 1")
+        File(tmp, "approute.log").writeText((1..30).joinToString("\n") { "11-05 10:00:00 line$it" } + "\n")
+        val out = sh("diag")
+        assertTrue(out, out.contains("multi_audio_focus_enabled=1"))
+        assertTrue(out, out.contains("mickeep=on"))
+        assertTrue(out, out.contains("router pid=none"))
+        assertTrue(out, out.contains("fake router /system/bin AppRoute diag"))
+        assertTrue(out, out.contains("router log:"))
+        assertFalse(out, out.contains("line10\n")); assertTrue(out, out.contains("line11\n")); assertTrue(out, out.contains("line30"))
+    }
+
     @Test fun mickeep_stateFollowsAFlagFileMadeByHand() {
         File(tmp, "approute.nomickeep").writeText("")
         assertEquals("mickeep=off", sh("mickeep", "state").trim())

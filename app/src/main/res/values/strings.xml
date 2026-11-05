@@ -114,6 +114,7 @@
     <string name="toast_no_browser">No browser found</string>
     <string name="succ_title">Working on your %1$s? Tell us in one tap</string>
     <string name="toast_sent">Sent, thank you!</string>
+    <string name="fb_unconfirmed">Sent, thank you! The split has not been active on this phone lately, so this report is saved as \"to be confirmed\". Start Shizuku, play some music over Bluetooth, then tap \"It works!\" again and it will be listed as confirmed.</string>
     <string name="toast_send_fail">Could not send; opening the GitHub form instead</string>
     <string name="fb_note_hint">What happened? (optional)</string>
     <string name="fb_send">Send</string>

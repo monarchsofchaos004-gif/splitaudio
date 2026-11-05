@@ -15,6 +15,7 @@ object Report {
     private val DROPDOWN = setOf(WORKS, PARTLY, BROKEN, UNTESTED)
     const val MAX_URL = 8000
     const val LOG_LINES = 20
+    const val ROUTER_LINES = 45
 
     /** What the diagnostics contain. No account, contact or Bluetooth device name is ever collected. */
     class DiagInfo(
@@ -26,6 +27,10 @@ object Report {
         val log: List<String>,
         /** 0.5.4: the saved text of the last crash ([Crash]); null = none */
         val crash: String? = null,
+        /** 0.5.7: when the split was last seen on ("never" / "3 min ago"), so a report says whether routing really ran on this phone */
+        val lastOn: String = "",
+        /** 0.5.7: the router's audio-focus snapshot ([Route.diag]); only the one-tap report has it */
+        val router: List<String> = emptyList(),
     )
 
     fun deviceName(brand: String, model: String): String {
@@ -67,6 +72,18 @@ object Report {
     }
 
     /** Pure: the diagnostics block (English on purpose: it is for the developer). Keeps only the last [LOG_LINES] log lines. */
+    /** Pure: "never" / "just now" / "N min ago" / "N h ago" / "N d ago" */
+    fun agoText(last: Long, now: Long): String {
+        if (last <= 0L || now < last) return "never"
+        val s = (now - last) / 1000
+        return when {
+            s < 60 -> "just now"
+            s < 7200 -> "${s / 60} min ago"
+            s < 172800 -> "${s / 3600} h ago"
+            else -> "${s / 86400} d ago"
+        }
+    }
+
     fun diagnostics(i: DiagInfo): String = buildString {
         append("Device: ").append(deviceName(i.brand, i.model)).append(" (brand=").append(i.brand).append(", model=").append(i.model).append(")\n")
         append("Build.DISPLAY: ").append(i.display).append('\n')
@@ -74,11 +91,16 @@ object Report {
         append("SplitAudio: ").append(i.appVersion).append(" (").append(i.flavor).append(")\n")
         append("Mode: ").append(i.mode).append('\n')
         append("Shizuku: ").append(i.shizuku).append('\n')
+        if (i.lastOn.isNotEmpty()) append("Split last active: ").append(i.lastOn).append('\n')
         append("Audio output device types: ").append(if (i.audioTypes.isEmpty()) "none" else i.audioTypes.joinToString(", ")).append('\n')
         append(Crash.section(i.crash))   // before the log: the top of a trace must survive the URL length cut
         append("Recent log:\n")
         val tail = i.log.takeLast(LOG_LINES)
         if (tail.isEmpty()) append("  (empty)\n") else tail.forEach { append("  ").append(it.take(300)).append('\n') }
+        if (i.router.isNotEmpty()) {
+            append("Router:\n")
+            i.router.take(ROUTER_LINES).forEach { append("  ").append(it.take(160)).append('\n') }
+        }
     }
 
     /** Pure: [v] if it is one of the form's dropdown values, otherwise "not tested". */

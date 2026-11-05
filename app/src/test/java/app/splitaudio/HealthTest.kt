@@ -61,6 +61,13 @@ class HealthTest {
         org.junit.Assert.assertTrue(Health.reaskDue(-1, 18, 0L, t))   // answered before 0.5.6 (no version recorded) -> ask once more
     }
 
+    @Test fun isRecent_within24Hours() {
+        val now = 2_000_000_000_000L
+        assertFalse(Health.isRecent(0L, now)); assertFalse(Health.isRecent(now + 1, now))
+        assertTrue(Health.isRecent(now - 1, now)); assertTrue(Health.isRecent(now - Health.CONFIRM_MS + 1, now))
+        assertFalse(Health.isRecent(now - Health.CONFIRM_MS, now))
+    }
+
     @Test fun failCardWindow() {
         assertFalse(Health.failCardVisible(0L, 1000L)); assertTrue(Health.failCardVisible(1000L, 1000L + Health.FAIL_CARD_MS - 1))
         assertFalse(Health.failCardVisible(1000L, 1000L + Health.FAIL_CARD_MS))
