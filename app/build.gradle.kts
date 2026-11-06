@@ -23,7 +23,8 @@ android {
     // The release APK is signed afterwards, outside of gradle, with the developer's key (CI uploads the unsigned APK as an artifact).
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }

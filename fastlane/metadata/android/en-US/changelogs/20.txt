@@ -1,1 +1,1 @@
-Pause now stays paused: when an equalizer or the system UI briefly holds audio focus, your music no longer starts again on its own. Voice typing keeps your music playing just like before.
+Pause now stays paused: when an equalizer or the system UI briefly holds audio focus, your music no longer starts again on its own. Voice typing keeps your music playing just like before. The app is also smaller to download.
