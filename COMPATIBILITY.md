@@ -16,6 +16,13 @@ Legend: ✅ works · ⚠️ works with notes · ❌ does not work · ❓ unteste
 | Google | Pixel 10 Pro XL | Android 17 | 0.5.6 | ❓ | ⚠️ | ✅ | Custom mode routes and the volume keys work; videos in other apps were reported to still pause the music with "Videos don't pause the music" on (being looked into). | [#17](https://github.com/monarchsofchaos004-gif/splitaudio/issues/17) (in-app report) |
 | Redmi | 2411DRN47I | Android 16 | 0.5.6 | ⚠️ | ❓ | ❓ | Reported working; Shizuku was not running when the report was sent, so it is waiting for a confirming report. | [#15](https://github.com/monarchsofchaos004-gif/splitaudio/issues/15) (in-app report) |
 | Redmi | 2303CRA44A | Android 15 | 0.5.6 | ⚠️ | ❓ | ❓ | Reported working; Shizuku was not running when the report was sent, so it is waiting for a confirming report. | [#16](https://github.com/monarchsofchaos004-gif/splitaudio/issues/16) (in-app report) |
+| realme | RMX3988 | Android 16 | 0.5.7 | ✅ | ❓ | ❓ | Simple mode reported working with the split active. | [#19](https://github.com/monarchsofchaos004-gif/splitaudio/issues/19) |
+| Redmi | 24116RACCG | Android 16 | 0.5.6 | ❓ | ✅ | ❓ | Custom mode reported working. | [#21](https://github.com/monarchsofchaos004-gif/splitaudio/issues/21) |
+| HONOR | ABR-NX1 | Android 16 | 0.5.7 | ❓ | ✅ | ❓ | Custom mode reported working with the split active. | [#22](https://github.com/monarchsofchaos004-gif/splitaudio/issues/22) |
+| realme | RMX3910 | Android 16 | 0.5.7 | ⚠️ | ❓ | ❓ | Reported working; the split had not run yet when the report was sent, so it is waiting for a confirming report. | [#24](https://github.com/monarchsofchaos004-gif/splitaudio/issues/24) |
+| realme | RMX3760 | Android 15 | 0.5.7 | ⚠️ | ❓ | ❓ | Reported working; the split had not run yet when the report was sent, so it is waiting for a confirming report. | [#25](https://github.com/monarchsofchaos004-gif/splitaudio/issues/25) |
+| vivo | V2437 | Android 16 | 0.5.7 | ⚠️ | ❓ | ❓ | Reported working; Shizuku was not running when the report was sent, so it is waiting for a confirming report. | [#26](https://github.com/monarchsofchaos004-gif/splitaudio/issues/26) |
+| Google | Pixel 11 Pro | Android 17 | 0.5.7 | ✅ | ❓ | ❓ | Simple mode reported working with the split active. | [#27](https://github.com/monarchsofchaos004-gif/splitaudio/issues/27) |
 
 ## How to add a row
 
