@@ -23,6 +23,7 @@ Legend: ✅ works · ⚠️ works with notes · ❌ does not work · ❓ unteste
 | realme | RMX3760 | Android 15 | 0.5.7 | ⚠️ | ❓ | ❓ | Reported working; the split had not run yet when the report was sent, so it is waiting for a confirming report. | [#25](https://github.com/monarchsofchaos004-gif/splitaudio/issues/25) |
 | vivo | V2437 | Android 16 | 0.5.7 | ⚠️ | ❓ | ❓ | Reported working; Shizuku was not running when the report was sent, so it is waiting for a confirming report. | [#26](https://github.com/monarchsofchaos004-gif/splitaudio/issues/26) |
 | Google | Pixel 11 Pro | Android 17 | 0.5.7 | ✅ | ❓ | ❓ | Simple mode reported working with the split active. | [#27](https://github.com/monarchsofchaos004-gif/splitaudio/issues/27) |
+| Samsung | SM-A556E | Android 16 | 0.5.7 | ✅ | ❓ | ❓ | Simple mode reported working with the split active. | [#28](https://github.com/monarchsofchaos004-gif/splitaudio/issues/28) |
 
 ## How to add a row
 
