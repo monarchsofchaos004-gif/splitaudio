@@ -17,7 +17,7 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove"/>
     <uses-permission android:name="android.permission.READ_PHONE_STATE" tools:node="remove"/>
-    <application android:name=".adb.App">
+    <application android:name=".adb.App" tools:replace="android:name">
         <activity android:name=".adb.LicensesActivity" android:exported="false" android:label="@string/lic_title"/>
         <!-- the monitor that starts the router when Bluetooth is connected and music plays (it also reconnects the built-in ADB when Wi-Fi comes up) -->
         <service android:name=".MonitorService" android:exported="false" android:foregroundServiceType="connectedDevice"/>

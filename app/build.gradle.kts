@@ -36,6 +36,12 @@ android {
         getByName("test") { java.srcDir("../route") }
     }
 }
+// R8 is for the fdroid / GitHub build. The play flavor's libadb and conscrypt call into their code from native
+// libraries, so that flavor stays as it was.
+androidComponents {
+    beforeVariants(selector().withFlavor("dist" to "play")) { it.isMinifyEnabled = false }
+}
+
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("dev.rikka.shizuku:api:13.1.5")
