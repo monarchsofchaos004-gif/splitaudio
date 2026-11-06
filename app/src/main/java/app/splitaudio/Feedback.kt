@@ -17,6 +17,7 @@ object Feedback {
     const val ENDPOINT_JSON = "https://raw.githubusercontent.com/monarchsofchaos004-gif/splitaudio/main/server/endpoint.json"
     const val DEFAULT_URL = "https://151-145-67-42.sslip.io/sa/report"
     const val REFRESH_MS = 24L * 3600 * 1000
+    const val REPEAT_MS = 10L * 60 * 1000
     const val MAX_DIAG = 8000
     const val MAX_NOTE = 1000
     const val MAX_NICK = 40
@@ -65,6 +66,15 @@ object Feedback {
         val fresh = try { endpointFrom(get(ENDPOINT_JSON, ua(c))) } catch (_: Exception) { null }
         if (fresh != null) p.edit().putString("url", fresh).putLong("url_at", now).apply()
         return fresh ?: cached ?: DEFAULT_URL
+    }
+
+    /** A "works" right after one already went through: the tap is thanked, no second report goes out. */
+    fun isRepeat(kind: String, lastKind: String?, lastAt: Long, now: Long): Boolean =
+        kind == "works" && lastKind == "works" && now - lastAt in 0 until REPEAT_MS
+
+    fun justSent(c: Context, kind: String, now: Long = System.currentTimeMillis()): Boolean {
+        val p = sp(c)
+        return isRepeat(kind, p.getString("last_kind", null), p.getLong("last_at", 0L), now)
     }
 
     /** Sends in the background; done(ok) runs on the UI thread. */

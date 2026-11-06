@@ -304,10 +304,17 @@ class MainActivity : Activity() {
     private fun formUrl(kind: String): String = when (kind) { "works" -> Diag.worksUrl(this); "crash" -> Diag.crashUrl(this); else -> Diag.problemUrl(this) }
 
     /** One-tap direct send; when it fails, the pre-filled GitHub form opens so nobody is left without a way to report. */
+    private var reportSending = false   // 0.5.8: a send takes a few seconds, and people kept tapping while it ran
+
     private fun sendReport(kind: String, note: String) {
+        if (reportSending) return
+        if (Feedback.justSent(this, kind)) { Toast.makeText(applicationContext, R.string.toast_sent, Toast.LENGTH_SHORT).show(); return }
+        reportSending = true
+        Toast.makeText(applicationContext, R.string.toast_sending, Toast.LENGTH_SHORT).show()
         if (kind == "crash") Crash.dismiss(this)
         val unconfirmed = kind == "works" && !Health.recentlyOn(this)   // 0.5.7: the split was not seen on lately = the report is saved as "to be confirmed"
         Feedback.send(this, kind, note) { ok ->
+            reportSending = false
             if (ok && unconfirmed && !isFinishing && !isDestroyed) AlertDialog.Builder(this).setMessage(R.string.fb_unconfirmed).setPositiveButton(android.R.string.ok, null).show()
             else Toast.makeText(applicationContext, if (ok) R.string.toast_sent else R.string.toast_send_fail, Toast.LENGTH_LONG).show()
             if (!ok) openUrl(formUrl(kind))

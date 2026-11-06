@@ -113,6 +113,7 @@
     <string name="toast_copied">已複製診斷文字</string>
     <string name="toast_no_browser">找不到瀏覽器</string>
     <string name="succ_title">在你的 %1$s 能用嗎？一鍵告訴我們</string>
+    <string name="toast_sending">送出中…</string>
     <string name="toast_sent">已送出，謝謝！</string>
     <string name="fb_unconfirmed">已送出，謝謝！這支手機最近沒有實際分流過，這則先記成「待確認」。開著 Shizuku、用藍牙播一下音樂，再按一次「能用！」就會列為已確認。</string>
     <string name="toast_send_fail">送不出去，改開 GitHub 表單</string>

@@ -1,6 +1,7 @@
 package app.splitaudio
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -40,5 +41,16 @@ class FeedbackTest {
         assertNull(Feedback.endpointFrom("not json at all"))
         assertNull(Feedback.endpointFrom("{\"report\": \"javascript:alert(1)\"}"))
         assertTrue(Feedback.DEFAULT_URL.startsWith("https://") && Feedback.DEFAULT_URL.endsWith("/sa/report") && !Feedback.DEFAULT_URL.contains("__"))
+    }
+
+    @Test fun isRepeat_onlyAWorksRightAfterAWorks() {
+        val t = 1_000_000L
+        assertTrue(Feedback.isRepeat("works", "works", t, t + 1))
+        assertTrue(Feedback.isRepeat("works", "works", t, t + Feedback.REPEAT_MS - 1))
+        assertFalse(Feedback.isRepeat("works", "works", t, t + Feedback.REPEAT_MS))
+        assertFalse(Feedback.isRepeat("works", null, 0L, t))
+        assertFalse(Feedback.isRepeat("works", "problem", t, t + 1))
+        assertFalse(Feedback.isRepeat("problem", "works", t, t + 1))
+        assertFalse(Feedback.isRepeat("crash", "crash", t, t + 1))
     }
 }
