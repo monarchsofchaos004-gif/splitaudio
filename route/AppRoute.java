@@ -264,20 +264,46 @@ public class AppRoute {
     //   to finish pausing) and the music only stalls for about half a second; waiting for the holder to go stays as the safety net.
     //   Not used (= the old behaviour) while the audio mode says call / voice chat (the call rule in main() pauses the music on
     //   purpose) and while multi audio focus is off (there the music app asking again would take the focus away from the mic).
+    // 0.5.8: an app can hold transient focus without using audio (an equalizer, the system UI). The music then stopped because the
+    //   user paused it, and pressing play would undo that, so a holder only counts once it records or plays (holderUsesAudio).
     static boolean focusArmed = false, holderSeen = false, playedBefore = false, focusErrLogged = false;
+    static boolean holderReal = false, holderDone = false, recErrLogged = false;
+    static int holderUid = -1;
+    static String heldBy = null;
     static final String NO_MICKEEP = "/data/local/tmp/approute.nomickeep";
     static final long MIC_KEEP_WAIT_MS = 300;
     /** The flag file is the switch: it exists = the user turned "mic doesn't pause the music" off (approute.sh mickeep off) */
     static boolean micKeepOn(java.io.File noMicKeepFile) { return !noMicKeepFile.exists(); }
     static boolean micKeepOn() { return micKeepOn(new java.io.File(NO_MICKEEP)); }
     /** What to do about a transient-focus holder: 0 = nothing, 1 = only arm (press play once the holder is gone: the old behaviour),
-     *  2 = press play at once and arm as well. newHolder = a holder is there that was not there on the last tick; playedBefore = the
+     *  2 = press play at once and arm as well. newHolder = a holder counts for the first time (holderCounts); playedBefore = the
      *  music was playing right before it showed up; keepOn = "mic doesn't pause the music" is on and usable. */
     static int micAction(boolean newHolder, boolean playedBefore, boolean keepOn) {
         if (!newHolder || !playedBefore) return 0;
         return keepOn ? 2 : 1;
     }
     static boolean multiFocusOn() { return "1".equals(sh("settings get system multi_audio_focus_enabled")); }
+    /** A holder counts on the first tick it is there and really uses audio */
+    static boolean holderCounts(boolean holderThere, boolean real, boolean done) { return holderThere && real && !done; }
+    /** Recording sources that mean someone is talking to the phone: not REMOTE_SUBMIX (8, audio capture), not HOTWORD (1999, always-on wake word) */
+    static boolean isVoiceSource(int source) { return source != 8 && source != 1999; }
+
+    /** Does the holder use audio? Any voice recording counts, because voice typing can record from another package than the one
+     *  holding the focus. If this cannot be read the answer is yes, which is the behaviour before 0.5.8. */
+    static boolean holderUsesAudio(int uid) {
+        try {
+            Object as = Class.forName("android.media.IAudioService$Stub").getMethod("asInterface", android.os.IBinder.class)
+                .invoke(null, Class.forName("android.os.ServiceManager").getMethod("getService", String.class).invoke(null, "audio"));
+            for (Object c : (java.util.List<?>) as.getClass().getMethod("getActiveRecordingConfigurations").invoke(as))
+                if (isVoiceSource((Integer) c.getClass().getMethod("getClientAudioSource").invoke(c))) return true;
+        } catch (Throwable e) {
+            if (!recErrLogged) { recErrLogged = true; log("recording check err " + e); }
+            return true;
+        }
+        java.util.Set<Integer> holderOnly = new java.util.HashSet<>();
+        holderOnly.add(uid);
+        return musicPlaying(holderOnly);
+    }
 
     /** micAction 2: give the music app MIC_KEEP_WAIT_MS to finish pausing for the focus loss, then press play if it is not playing */
     static void micKeepPlaying(java.util.Set<Integer> music, String holder) throws InterruptedException {
@@ -291,13 +317,17 @@ public class AppRoute {
         long end = System.currentTimeMillis() + ms;
         do {
             String holder = transientHolder(music);
-            boolean newHolder = holder != null && !holderSeen;
-            boolean keep = newHolder && playedBefore && micKeepOn() && multiFocusOn();   // the file / the setting are only looked at when it matters
-            int act = micAction(newHolder, playedBefore, keep);
+            if (holder != null && !holderSeen) { holderReal = false; holderDone = false; heldBy = holder; }
+            if (holder != null && !holderReal) holderReal = holderUsesAudio(holderUid);   // asked every tick: the mic can open a moment later
+            boolean counts = holderCounts(holder != null, holderReal, holderDone);
+            boolean keep = counts && playedBefore && micKeepOn() && multiFocusOn();   // the file / the setting are only looked at when it matters
+            int act = micAction(counts, playedBefore, keep);
+            if (counts) holderDone = true;
             if (act != 0) focusArmed = true;
             if (act == 1) log(holder + " took transient focus -> resume music after it");
             if (act == 2) micKeepPlaying(music, holder);
             if (holder == null) {
+                if (holderSeen && !holderReal && playedBefore) log(heldBy + " held the focus without using audio -> left alone");
                 if (focusArmed) {
                     focusArmed = false; Thread.sleep(1000);
                     if (!musicPlaying(music)) { sh("cmd media_session dispatch play"); log("transient focus over -> music resumed"); }
@@ -318,7 +348,7 @@ public class AppRoute {
             for (Object f : l) {
                 int g = (Integer) f.getClass().getMethod("getGainRequest").invoke(f);
                 int uid = (Integer) f.getClass().getMethod("getClientUid").invoke(f);
-                if (g >= 2 && g <= 4 && !music.contains(uid)) return (String) f.getClass().getMethod("getPackageName").invoke(f);
+                if (g >= 2 && g <= 4 && !music.contains(uid)) { holderUid = uid; return (String) f.getClass().getMethod("getPackageName").invoke(f); }
             }
         } catch (Throwable e) { if (!focusErrLogged) { focusErrLogged = true; log("focus stack err " + e); } }
         return null;
@@ -790,6 +820,14 @@ public class AppRoute {
                 }
                 System.out.println("playing=" + n);
             } catch (Throwable e) { System.out.println("playing=? " + e.getClass().getSimpleName()); }
+            try {
+                java.util.List<?> l = (java.util.List<?>) as.getClass().getMethod("getActiveRecordingConfigurations").invoke(as);
+                for (Object c : l) {
+                    int source = (Integer) c.getClass().getMethod("getClientAudioSource").invoke(c);
+                    System.out.println("  recording source=" + source + (isVoiceSource(source) ? "" : " (not a voice)"));
+                }
+                System.out.println("recording=" + l.size());
+            } catch (Throwable e) { System.out.println("recording=? " + e.getClass().getSimpleName()); }
         } catch (Throwable e) { System.out.println("diag err " + e.getClass().getSimpleName()); }
     }
     /** Pure: one focus stack line of the diag output. gain: 1 = wants to keep the audio, 2 = for a moment, 3 = for a moment and

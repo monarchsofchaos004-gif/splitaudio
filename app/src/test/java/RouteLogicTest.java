@@ -288,6 +288,23 @@ public class RouteLogicTest {
         assertEquals("  focus a.b gain9 loss=0", AppRoute.diagFocusLine("a.b", 9, "0"));
     }
 
+    @Test public void holderCounts_onlyOnceAndOnlyWhenItUsesAudio() {
+        // (holder there, uses audio, already handled)
+        assertFalse(AppRoute.holderCounts(false, false, false));
+        assertFalse(AppRoute.holderCounts(false, true, false));
+        assertFalse(AppRoute.holderCounts(true, false, false));    // an equalizer: holds the focus, no sound and no mic
+        assertTrue(AppRoute.holderCounts(true, true, false));      // voice typing, an assistant talking
+        assertFalse(AppRoute.holderCounts(true, true, true));      // counted once, not on every tick
+    }
+
+    @Test public void voiceSource_captureAndWakeWordDoNotCount() {
+        assertTrue(AppRoute.isVoiceSource(1));       // MIC
+        assertTrue(AppRoute.isVoiceSource(6));       // VOICE_RECOGNITION
+        assertTrue(AppRoute.isVoiceSource(7));       // VOICE_COMMUNICATION
+        assertFalse(AppRoute.isVoiceSource(8));      // REMOTE_SUBMIX
+        assertFalse(AppRoute.isVoiceSource(1999));   // HOTWORD
+    }
+
     @Test public void micAction_truthTable() {
         // (newHolder, playedBefore, keepOn) -> 0 = nothing, 1 = only arm (press play once the holder is gone), 2 = press play at once and arm
         assertEquals(0, AppRoute.micAction(false, false, false));
