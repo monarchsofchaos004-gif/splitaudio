@@ -24,6 +24,9 @@ Legend: ✅ works · ⚠️ works with notes · ❌ does not work · ❓ unteste
 | vivo | V2437 | Android 16 | 0.5.7 | ⚠️ | ❓ | ❓ | Reported working; Shizuku was not running when the report was sent, so it is waiting for a confirming report. | [#26](https://github.com/monarchsofchaos004-gif/splitaudio/issues/26) |
 | Google | Pixel 11 Pro | Android 17 | 0.5.7 | ✅ | ❓ | ❓ | Simple mode reported working with the split active. | [#27](https://github.com/monarchsofchaos004-gif/splitaudio/issues/27) |
 | Samsung | SM-A556E | Android 16 | 0.5.7 | ✅ | ❓ | ❓ | Simple mode reported working with the split active. | [#28](https://github.com/monarchsofchaos004-gif/splitaudio/issues/28) |
+| motorola | moto g04s | Android 14 | 0.5.7 | ✅ | ❓ | ❓ | Simple mode reported working with the split active (three one-tap reports). | [#41](https://github.com/monarchsofchaos004-gif/splitaudio/issues/41) |
+| Samsung | SM-A366B | Android 17 | 0.5.7 | ✅ | ❓ | ❓ | Simple mode reported working with the split active. | [#42](https://github.com/monarchsofchaos004-gif/splitaudio/issues/42) |
+| PHILIPS | S7710 | Android 13 | 0.5.7 | ❌ | ❓ | ❓ | Reported not working. The diagnostics show the router started three times but no music app was playing while it ran (another app held audio focus), so the split never engaged; a report sent while music is playing would settle it. | [#40](https://github.com/monarchsofchaos004-gif/splitaudio/issues/40) |
 
 ## How to add a row
 
