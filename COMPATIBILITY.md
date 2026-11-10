@@ -27,6 +27,36 @@ Legend: ✅ works · ⚠️ works with notes · ❌ does not work · ❓ unteste
 | motorola | moto g04s | Android 14 | 0.5.7 | ✅ | ❓ | ❓ | Simple mode reported working with the split active (three one-tap reports). | [#41](https://github.com/monarchsofchaos004-gif/splitaudio/issues/41) |
 | Samsung | SM-A366B | Android 17 | 0.5.7 | ✅ | ❓ | ❓ | Simple mode reported working with the split active. | [#42](https://github.com/monarchsofchaos004-gif/splitaudio/issues/42) |
 | PHILIPS | S7710 | Android 13 | 0.5.7 | ❌ | ❓ | ❓ | Reported not working. The diagnostics show the router started three times but no music app was playing while it ran (another app held audio focus), so the split never engaged; a report sent while music is playing would settle it. | [#40](https://github.com/monarchsofchaos004-gif/splitaudio/issues/40) |
+| Redmi | miel | Android 17 | 0.5.6 | ❓ | ✅ | ❓ | One-tap report from the app. | [#18](https://github.com/monarchsofchaos004-gif/splitaudio/issues/18) |
+| POCO | 23013PC75G | Android 16 | 0.5.7 | ✅ | ❓ | ❓ | One-tap report from the app. | [#20](https://github.com/monarchsofchaos004-gif/splitaudio/issues/20) |
+| ASUS | ASUS_AI2302 | Android 15 | 0.5.7 | ❓ | ❌ | ❓ | The "not working" report was sent with no Bluetooth device connected; please re-test with Bluetooth on. | [#23](https://github.com/monarchsofchaos004-gif/splitaudio/issues/23) |
+| OnePlus | CPH2609 | Android 16 | 0.5.7 | ❓ | ❌ | ❓ | Looking into it; details in the issue. | [#33](https://github.com/monarchsofchaos004-gif/splitaudio/issues/33) |
+| POCO | 2310FPCA4G | Android 15 | 0.5.7 | ❓ | ✅ | ❓ | One-tap report from the app. | [#34](https://github.com/monarchsofchaos004-gif/splitaudio/issues/34) |
+| Realme | RMX3371 | Android 14 | 0.5.7 | ❓ | ✅ | ❓ | One-tap report from the app. | [#35](https://github.com/monarchsofchaos004-gif/splitaudio/issues/35) |
+| Redmi | 22071219AI | Android 14 | 0.5.7 | ⚠️ | ❓ | ❓ | Mixed reports: worked in one report, not in another; see the issues. The "not working" report was sent with no Bluetooth device connected; please re-test with Bluetooth on. | [#36](https://github.com/monarchsofchaos004-gif/splitaudio/issues/36), [#50](https://github.com/monarchsofchaos004-gif/splitaudio/issues/50) |
+| Motorola | moto g86 5G | Android 16 | 0.5.7 | ❓ | ✅ | ❓ | One-tap report from the app. | [#37](https://github.com/monarchsofchaos004-gif/splitaudio/issues/37) |
+| Redmi | 23021RAA2Y | Android 15 | 0.5.7 | ✅ | ❓ | ❓ | One-tap report from the app. | [#38](https://github.com/monarchsofchaos004-gif/splitaudio/issues/38) |
+| Redmi | 25078RA3EA | Android 16 | 0.5.7 | ✅ | ❓ | ❓ | One-tap report from the app. | [#39](https://github.com/monarchsofchaos004-gif/splitaudio/issues/39) |
+| POCO | 25053PC47G | Android 16 | 0.5.7 | ✅ | ❓ | ❓ | One-tap report from the app. | [#43](https://github.com/monarchsofchaos004-gif/splitaudio/issues/43) |
+| Redmi | 25062RN2DL | Android 16 | 0.5.7 | ✅ | ❓ | ❓ | One-tap report from the app. | [#44](https://github.com/monarchsofchaos004-gif/splitaudio/issues/44) |
+| Redmi | 2201117SG | Android 13 | 0.5.7 | ❓ | ⚠️ | ❓ | Mixed reports: worked in one report, not in another; see the issues. | [#45](https://github.com/monarchsofchaos004-gif/splitaudio/issues/45), [#46](https://github.com/monarchsofchaos004-gif/splitaudio/issues/46) |
+| Infinix | X6870 | Android 16 | 0.5.7 | ✅ | ❓ | ❓ | One-tap report from the app. | [#47](https://github.com/monarchsofchaos004-gif/splitaudio/issues/47) |
+| Motorola | moto g power - 2025 | Android 16 | 0.5.7 | ❓ | ✅ | ❓ | One-tap report from the app. | [#48](https://github.com/monarchsofchaos004-gif/splitaudio/issues/48) |
+| OnePlus | PLC110 | Android 17 | 0.5.7 | ⚠️ | ❓ | ❓ | Mixed reports: worked in one report, not in another; see the issues. | [#49](https://github.com/monarchsofchaos004-gif/splitaudio/issues/49), [#51](https://github.com/monarchsofchaos004-gif/splitaudio/issues/51) |
+| Xiaomi | 22071212AG | Android 13 | 0.5.7 | ❓ | ✅ | ❓ | One-tap report from the app. | [#52](https://github.com/monarchsofchaos004-gif/splitaudio/issues/52) |
+| Xiaomi | 23127PN0CC | Android 16 | 0.5.7 | ✅ | ❓ | ❓ | One-tap report from the app. | [#53](https://github.com/monarchsofchaos004-gif/splitaudio/issues/53) |
+| Samsung | SM-S938U1 | Android 17 | 0.5.7 | ✅ | ❓ | ❓ | One-tap report from the app. | [#54](https://github.com/monarchsofchaos004-gif/splitaudio/issues/54) |
+| Redmi | 23106RN0DA | Android 15 | 0.5.7 | ✅ | ❓ | ❓ | One-tap report from the app. | [#55](https://github.com/monarchsofchaos004-gif/splitaudio/issues/55) |
+| Xiaomi | 22081212UG | Android 15 | 0.5.7 | ✅ | ❓ | ❓ | One-tap report from the app. | [#56](https://github.com/monarchsofchaos004-gif/splitaudio/issues/56) |
+| Motorola | edge 40 | Android 15 | 0.5.7 | ✅ | ❓ | ❓ | One-tap report from the app. | [#57](https://github.com/monarchsofchaos004-gif/splitaudio/issues/57) |
+| POCO | 2312FPCA6G | Android 16 | 0.5.7 | ❓ | ✅ | ❓ | One-tap report from the app. | [#58](https://github.com/monarchsofchaos004-gif/splitaudio/issues/58) |
+| Redmi | 23129RA5FL | Android 15 | 0.5.7 | ✅ | ❓ | ❓ | One-tap report from the app. | [#59](https://github.com/monarchsofchaos004-gif/splitaudio/issues/59) |
+| Samsung | SM-A266B | Android 16 | 0.5.7 | ❓ | ✅ | ❓ | One-tap report from the app. | [#60](https://github.com/monarchsofchaos004-gif/splitaudio/issues/60) |
+| Xiaomi | 25098PN5AC | Android 17 | 0.5.7 | ✅ | ❓ | ❓ | One-tap report from the app. | [#61](https://github.com/monarchsofchaos004-gif/splitaudio/issues/61) |
+| Infinix | X6887 | Android 16 | 0.5.7 | ✅ | ❓ | ❓ | One-tap report from the app. | [#62](https://github.com/monarchsofchaos004-gif/splitaudio/issues/62) |
+| Redmi | 24117RN76G | Android 16 | 0.5.7 | ✅ | ❓ | ❓ | One-tap report from the app. | [#63](https://github.com/monarchsofchaos004-gif/splitaudio/issues/63) |
+| Realme | RMX5070 | Android 16 | 0.5.7 | ✅ | ❓ | ❓ | One-tap report from the app. | [#64](https://github.com/monarchsofchaos004-gif/splitaudio/issues/64) |
+| Xiaomi | 2406APNFAG | Android 16 | 0.5.7 | ❓ | ⚠️ | ❓ | Mixed reports: worked in one report, not in another; see the issues. | [#65](https://github.com/monarchsofchaos004-gif/splitaudio/issues/65), [#66](https://github.com/monarchsofchaos004-gif/splitaudio/issues/66) |
 
 ## How to add a row
 
