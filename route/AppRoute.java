@@ -431,7 +431,7 @@ public class AppRoute {
     //      right after sending would otherwise slip through); where it does not work at all (a ROM that hides those files from the
     //      shell user) the token alone decides, and that is logged at start.
     //   Anything else gets "denied" and is closed. After a good "auth" line one command line is read:
-    //   state -> on/off; mode -> map/legacy; vol up|down <package> -> ok <percent> / pass (app not routed to the speaker, or rule off).
+    //   state -> on/off; mode -> map/legacy; vol up|down <package>|@speaker -> ok <percent> / pass (app not routed to the speaker, or rule off).
     static final int VOL_PORT = 47821;   // 127.0.0.1 only
     static final int VOL_STEPS = 15;     // the volume keys move the speaker volume in about this many steps, whatever the device's index range
     static final String TOKEN_FILE = "/data/local/tmp/approute.token";
@@ -695,7 +695,9 @@ public class AppRoute {
         if (p[0].equals("mode")) return mapMode ? "map" : "legacy";
         if (!p[0].equals("vol") || p.length < 3 || !(p[1].equals("up") || p[1].equals("down"))) return "err";
         if (policy == null) return "pass";
+        boolean self = p[2].equals("@speaker");   // 0.5.9: the app's own screen is in front -> the keys change the speaker volume
         try {
+            if (!self) {
             Object pm = Class.forName("android.content.pm.IPackageManager$Stub").getMethod("asInterface", android.os.IBinder.class)
                 .invoke(null, Class.forName("android.os.ServiceManager").getMethod("getService", String.class).invoke(null, "package"));
             int uid = -1;
@@ -703,6 +705,7 @@ public class AppRoute {
                 if (m.getName().equals("getPackageUid") && m.getParameterTypes().length == 3) {
                     uid = (Integer) m.invoke(pm, p[2], m.getParameterTypes()[1] == long.class ? (Object) 0L : (Object) 0, 0); break; }
             if (!routed.contains(uid)) return "pass";
+            }
             Object as = audioService();
             if (!volRange(as)) return "pass";
             Class<?> ada = Class.forName("android.media.AudioDeviceAttributes"), vic = Class.forName("android.media.VolumeInfo"), vib = Class.forName("android.media.VolumeInfo$Builder");

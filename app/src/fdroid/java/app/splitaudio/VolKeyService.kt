@@ -11,7 +11,7 @@ import android.view.accessibility.AccessibilityEvent
 import android.widget.Toast
 
 /** 音量鍵：分流規則掛著＋前景是走喇叭的 App → 調「手機喇叭」（問 AppRoute 本機指令口）；
- *  音樂 App（[Music] 清單，用戶可選）／桌面（[Launcher] 動態查）／系統介面照常調藍牙。規則沒掛＝完全不攔。
+ *  音樂 App（[Music] 清單，用戶可選）／桌面（[Launcher] 動態查）／系統介面／鎖屏照常調藍牙；本 App 自己的畫面在前面＝調手機喇叭（0.5.9）。規則沒掛＝完全不攔。
  *  Android 13（API 33）起才有系統的 VolumeInfo（路由程式靠它調喇叭音量）→ API 33 以前不輪詢、不攔任何鍵。 */
 class VolKeyService : AccessibilityService() {
     @Volatile private var routeOn = false
@@ -57,15 +57,18 @@ class VolKeyService : AccessibilityService() {
             routeOn = Route.ask(this, "state", 300) == "on"; routeAsked = System.currentTimeMillis()
         }
         if (!routeOn) { AppLog.add("volkey: rule off, pass"); return false }
+        // 0.5.9: lock screen = the keys change the music on Bluetooth (the app that was open before locking does not count)
+        if ((getSystemService(Context.KEYGUARD_SERVICE) as android.app.KeyguardManager).isKeyguardLocked) { AppLog.add("volkey: locked, pass"); return false }
         val fg = (try { rootInActiveWindow?.packageName?.toString() } catch (_: Exception) { null }) ?: lastPkg
         if (fg == null) { AppLog.add("volkey: no foreground pkg, pass"); return false }   // 0.5.2：讀不到就用最近視窗切換的套件（全螢幕影片常讀不到）
         // 自訂模式：音樂 App 也可能被指定走喇叭 → 只略過桌面／系統介面，其餘交給路由程式判斷（不是走喇叭的回 pass，照原本調）
         val home = Launcher.packages(this)
-        if ((if (Outputs.custom(this)) fg in home else fg in home || fg in Music.set(this)) || fg == packageName) { AppLog.add("volkey: fg=$fg is home/music, pass"); return false }
+        if (fg != packageName && (if (Outputs.custom(this)) fg in home else fg in home || fg in Music.set(this))) { AppLog.add("volkey: fg=$fg is home/music, pass"); return false }
         consumed.add(k)
         val dir = if (k == KeyEvent.KEYCODE_VOLUME_UP) "up" else "down"
+        val target = if (fg == packageName) "@speaker" else fg   // 0.5.9: this app's own screen in front = change the phone speaker volume
         Thread {
-            val r = Route.ask(this, "vol $dir $fg")
+            val r = Route.ask(this, "vol $dir $target")
             AppLog.add("volkey: $dir fg=$fg -> ${r ?: "no reply"}")
             main.post {
                 if (r != null && r.startsWith("ok ")) Toast.makeText(this, getString(R.string.toast_vol, r.substring(3)), Toast.LENGTH_SHORT).show()
