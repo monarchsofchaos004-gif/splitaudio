@@ -52,7 +52,11 @@ class MonitorService : Service() {
         Health.startGrace(applicationContext)   // after an update/reboot Shizuku may need a while: misses in the first 90 s are not failures
         state = getString(R.string.s_idle)
         am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        startForeground(1, notif(), Dist.fgsType)
+        // Android 12+ can recreate the service while the app is in the background and then refuse startForeground
+        //   (ForegroundServiceStartNotAllowedException, seen on an Infinix X6882, #74). Leave quietly instead of crashing:
+        //   the next allowed start (opening the app, boot, the volume-key service) brings the monitor back.
+        try { startForeground(1, notif(), Dist.fgsType) }
+        catch (e: Exception) { AppLog.add("monitor: foreground start refused (${e.javaClass.simpleName}), waiting for the next start"); stopSelf(); return }
         am.registerAudioPlaybackCallback(playbackCb, h)
         am.registerAudioDeviceCallback(deviceCb, h)
         binderHandle = ShizukuBackend.addBinderListener { rearm(shizukuRun, 0) }
