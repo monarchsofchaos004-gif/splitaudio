@@ -15,7 +15,7 @@ import java.net.URL
  */
 object Feedback {
     const val ENDPOINT_JSON = "https://raw.githubusercontent.com/monarchsofchaos004-gif/splitaudio/main/server/endpoint.json"
-    const val DEFAULT_URL = "https://151-145-67-42.sslip.io/sa/report"
+    const val DEFAULT_URL = "https://sa-report.monarchsofchaos004.workers.dev/sa/report"
     const val REFRESH_MS = 24L * 3600 * 1000
     const val REPEAT_MS = 10L * 60 * 1000
     const val MAX_DIAG = 8000
