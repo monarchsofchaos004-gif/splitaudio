@@ -11,7 +11,9 @@ object Diag {
     fun versionCode(c: Context): Int = try { c.packageManager.getPackageInfo(c.packageName, 0).longVersionCode.toInt() } catch (_: Throwable) { 0 }
     fun versionName(c: Context): String = try { c.packageManager.getPackageInfo(c.packageName, 0).versionName ?: "?" } catch (_: Throwable) { "?" }
 
-    fun mode(c: Context): String = if (Outputs.customFlag(c)) "custom" else "simple"
+    /** The mode that is actually routing: Custom with no app chosen runs like Simple (#76), so reports and the pre-filled form say "simple" then. */
+    fun mode(c: Context): String = if (Outputs.custom(c)) "custom" else "simple"
+    private fun modeNote(c: Context): String = if (Outputs.customFlag(c) && !Outputs.hasAny(c)) "Custom is on, no app chosen yet" else ""
 
     private fun shizuku(): String {
         val alive = ShizukuBackend.alive()
@@ -27,7 +29,7 @@ object Diag {
     fun info(c: Context, router: Boolean = false) = Report.DiagInfo(
         Build.BRAND, Build.MODEL, Build.DISPLAY, Build.VERSION.RELEASE, Build.VERSION.SDK_INT,
         versionName(c), Dist.flavor, mode(c), shizuku(), audioTypes(c), AppLog.tail(), Crash.saved(c),
-        Report.agoText(Health.lastOn(c), System.currentTimeMillis()), if (router) Route.diag(c) else emptyList())
+        Report.agoText(Health.lastOn(c), System.currentTimeMillis()), if (router) Route.diag(c) else emptyList(), modeNote(c))
 
     fun text(c: Context): String = Report.diagnostics(info(c))
 

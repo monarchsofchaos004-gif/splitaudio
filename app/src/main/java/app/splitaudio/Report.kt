@@ -31,6 +31,8 @@ object Report {
         val lastOn: String = "",
         /** 0.5.7: the router's audio-focus snapshot ([Route.diag]); only the one-tap report has it */
         val router: List<String> = emptyList(),
+        /** 0.5.9: a short remark after the mode, e.g. Custom switched on with no app chosen (it then runs like Simple, #76) */
+        val modeNote: String = "",
     )
 
     fun deviceName(brand: String, model: String): String {
@@ -89,7 +91,7 @@ object Report {
         append("Build.DISPLAY: ").append(i.display).append('\n')
         append("Android: ").append(i.androidRelease).append(" (API ").append(i.sdk).append(")\n")
         append("SplitAudio: ").append(i.appVersion).append(" (").append(i.flavor).append(")\n")
-        append("Mode: ").append(i.mode).append('\n')
+        append("Mode: ").append(i.mode); if (i.modeNote.isNotEmpty()) append(" (").append(i.modeNote).append(')'); append('\n')
         append("Shizuku: ").append(i.shizuku).append('\n')
         if (i.lastOn.isNotEmpty()) append("Split last active: ").append(i.lastOn).append('\n')
         append("Audio output device types: ").append(if (i.audioTypes.isEmpty()) "none" else i.audioTypes.joinToString(", ")).append('\n')
