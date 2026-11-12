@@ -705,6 +705,8 @@ public class AppRoute {
                 if (m.getName().equals("getPackageUid") && m.getParameterTypes().length == 3) {
                     uid = (Integer) m.invoke(pm, p[2], m.getParameterTypes()[1] == long.class ? (Object) 0L : (Object) 0, 0); break; }
             if (!routed.contains(uid)) return "pass";
+            // 0.5.9 (#85): the app in front is on the speaker but silent (e.g. a calculator) -> the keys change what is heard, the music on Bluetooth
+            if (!musicPlaying(java.util.Collections.singleton(uid))) return "pass";
             }
             Object as = audioService();
             if (!volRange(as)) return "pass";
