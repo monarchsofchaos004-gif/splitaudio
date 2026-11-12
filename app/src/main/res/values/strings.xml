@@ -137,4 +137,12 @@
     <string name="upd_skip">Skip this version</string>
     <string name="upd_switch">Check for new versions</string>
     <string name="upd_switch_d">Looks at GitHub once a day when you open the app. It only shows a link to the release page; nothing is downloaded or installed.</string>
+    <string name="sym_title">What went wrong? Tap all that apply, so the fix can target your phone</string>
+    <string name="sym_bt_others">Other apps still play on Bluetooth</string>
+    <string name="sym_speaker_music">Music plays on the phone speaker</string>
+    <string name="sym_no_sound">No sound at all</string>
+    <string name="sym_calls">Phone calls are affected</string>
+    <string name="sym_volkeys">Volume keys change the wrong sound</string>
+    <string name="sym_pauses">Music pauses or stops by itself</string>
+    <string name="sym_other">Something else</string>
 </resources>

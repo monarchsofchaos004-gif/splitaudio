@@ -137,4 +137,12 @@
     <string name="upd_skip">這版先不提醒</string>
     <string name="upd_switch">檢查新版本</string>
     <string name="upd_switch_d">開啟 App 時每天最多看一次 GitHub，只顯示發布頁連結，不會下載或安裝任何東西。</string>
+    <string name="sym_title">哪裡不對？可複選，修正會更快對到你的手機</string>
+    <string name="sym_bt_others">其他 App 還是在藍牙出聲</string>
+    <string name="sym_speaker_music">音樂跑到手機喇叭</string>
+    <string name="sym_no_sound">完全沒聲音</string>
+    <string name="sym_calls">講電話受影響</string>
+    <string name="sym_volkeys">音量鍵調到不對的聲音</string>
+    <string name="sym_pauses">音樂自己暫停或停掉</string>
+    <string name="sym_other">其他</string>
 </resources>

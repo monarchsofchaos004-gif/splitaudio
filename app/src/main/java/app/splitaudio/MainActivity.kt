@@ -328,10 +328,19 @@ class MainActivity : Activity() {
             hint = getString(R.string.fb_note_hint); inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
             minLines = 2; maxLines = 5; setPadding(dp(16), dp(12), dp(16), dp(12))
         }
+        // "problem": one-tap boxes for what went wrong above the note (#81: reports without a note could not be narrowed down)
+        val picks = LinkedHashMap<String, android.widget.CheckBox>()
+        val view: View = if (kind != "problem") input else LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(8), dp(16), 0)
+            addView(TextView(this@MainActivity).apply { text = getString(R.string.sym_title); setPadding(0, 0, 0, dp(4)) })
+            for ((key, _) in Symptoms.ALL) addView(android.widget.CheckBox(this@MainActivity).apply {
+                text = getString(Symptoms.LABELS.getValue(key)); picks[key] = this })
+            addView(input.apply { setPadding(0, dp(8), 0, dp(8)) })
+        }
         AlertDialog.Builder(this)
             .setTitle(getString(if (kind == "crash") R.string.crash_title else R.string.fail_title))
-            .setView(input)
-            .setPositiveButton(R.string.fb_send) { _, _ -> sendReport(kind, input.text.toString()) }
+            .setView(if (kind == "problem") ScrollView(this).apply { addView(view) } else view)
+            .setPositiveButton(R.string.fb_send) { _, _ -> sendReport(kind, Symptoms.note(picks.filterValues { it.isChecked }.keys, input.text.toString())) }
             .setNeutralButton(R.string.fb_github) { _, _ -> if (kind == "crash") Crash.dismiss(this); openUrl(formUrl(kind)); renderTop() }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
