@@ -76,6 +76,8 @@ Legend: ✅ works · ⚠️ works with notes · ❌ does not work · ❓ unteste
 | Xiaomi | 25091RP04C | Android 17 | 0.5.7 | ✅ | ✅ | ❓ | Simple and Custom modes reported working with the split active. | [#87](https://github.com/monarchsofchaos004-gif/splitaudio/issues/87) |
 | POCO | 2511FPC34G | Android 16 | 0.5.7 | ❓ | ⚠️ | ❓ | Reported working; the split had not run yet when the report was sent, so it is waiting for a confirming report. | [#88](https://github.com/monarchsofchaos004-gif/splitaudio/issues/88) |
 | Samsung | SM-S938B | Android 17 | 0.5.7 | ⚠️ | ❓ | ❓ | Reported working; the split had not run yet when the report was sent, so it is waiting for a confirming report. | [#89](https://github.com/monarchsofchaos004-gif/splitaudio/issues/89) |
+| TECNO | KM7 | Android 15 | 0.5.7 | ❓ | ⚠️ | ❓ | Reported working; the split had not run yet when the report was sent, so it is waiting for a confirming report. | [#90](https://github.com/monarchsofchaos004-gif/splitaudio/issues/90) |
+| Infinix | X6850 | Android 16 | 0.5.7 | ❓ | ⚠️ | ❓ | Reported working; the split had not run yet when the report was sent, so it is waiting for a confirming report. | [#91](https://github.com/monarchsofchaos004-gif/splitaudio/issues/91) |
 
 ## How to add a row
 
