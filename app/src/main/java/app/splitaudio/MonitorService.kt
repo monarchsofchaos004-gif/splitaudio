@@ -26,6 +26,7 @@ class MonitorService : Service() {
     @Volatile private var state = ""
     private lateinit var am: AudioManager
     private var binderHandle: Any? = null
+    private var up = false   // onCreate finished with the service in the foreground
 
     private val playRun = Runnable { check("play"); mixer() }
     private val btRun = Runnable { check("bt") }
@@ -55,14 +56,20 @@ class MonitorService : Service() {
         // Android 12+ can recreate the service while the app is in the background and then refuse startForeground
         //   (ForegroundServiceStartNotAllowedException, seen on an Infinix X6882, #74). Leave quietly instead of crashing:
         //   the next allowed start (opening the app, boot, the volume-key service) brings the monitor back.
-        try { startForeground(1, notif(), Dist.fgsType) }
-        catch (e: Exception) { AppLog.add("monitor: foreground start refused (${e.javaClass.simpleName}), waiting for the next start"); stopSelf(); return }
+        if (!goForeground()) { stopSelf(); return }
         am.registerAudioPlaybackCallback(playbackCb, h)
         am.registerAudioDeviceCallback(deviceCb, h)
         binderHandle = ShizukuBackend.addBinderListener { rearm(shizukuRun, 0) }
         Dist.onServiceCreate(this)
         rearm(tickRun, 60_000)
+        up = true
     }
+
+    /** Every Context.startForegroundService() has to be answered by startForeground(), also when this service is already up:
+     *  an instance that is alive but no longer in the foreground would be closed by the system a few seconds later
+     *  (ForegroundServiceDidNotStartInTimeException, seen on an OPPO PLG110 with Android 17, #98). */
+    private fun goForeground(): Boolean = try { startForeground(1, notif(), Dist.fgsType); true }
+        catch (e: Exception) { AppLog.add("monitor: foreground start refused (${e.javaClass.simpleName}), waiting for the next start"); false }
 
     override fun onDestroy() {
         h.removeCallbacksAndMessages(null)
@@ -75,7 +82,11 @@ class MonitorService : Service() {
         super.onDestroy()
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int { rearm(startRun, 0); return START_STICKY }
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (!up) return START_STICKY   // onCreate was refused the foreground and stopSelf() is on its way
+        goForeground()                 // answers this start; when already in the foreground it only refreshes the notification
+        rearm(startRun, 0); return START_STICKY
+    }
 
     private fun bt(): Boolean = am.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any {
         it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || it.type == AudioDeviceInfo.TYPE_BLE_HEADSET || it.type == AudioDeviceInfo.TYPE_BLE_SPEAKER }
