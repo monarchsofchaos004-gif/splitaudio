@@ -99,6 +99,17 @@ Legend: ✅ works · ⚠️ works with notes · ❌ does not work · ❓ unteste
 | Redmi | M098FE | Android 17 | 0.5.7 | ⚠️ | ❓ | ❓ | Reported working; the split had not run yet when the report was sent, so it is waiting for a confirming report. | [#116](https://github.com/monarchsofchaos004-gif/splitaudio/issues/116) |
 | Google | Pixel 10 Pro | Android 17 | 0.5.7 | ✅ | ❓ | ❓ | Simple mode reported working with the split active. | [#118](https://github.com/monarchsofchaos004-gif/splitaudio/issues/118) |
 | POCO | 2412DPC0AG | Android 16 | 0.5.7 | ❓ | ⚠️ | ❓ | Reported working; the split had not run yet when the report was sent, so it is waiting for a confirming report. | [#119](https://github.com/monarchsofchaos004-gif/splitaudio/issues/119) |
+| Samsung | SM-A176B | Android 16 | 0.5.7 | ⚠️ | ❓ | ❓ | Reported working; Shizuku was not running when the report was sent, so it is waiting for a confirming report. | [#120](https://github.com/monarchsofchaos004-gif/splitaudio/issues/120) |
+| Redmi | 2404ARN45A | Android 16 | 0.5.7 | ✅ | ❓ | ❓ | Simple mode reported working with the split active. | [#121](https://github.com/monarchsofchaos004-gif/splitaudio/issues/121) |
+| OPPO | CPH2641 | Android 14 | 0.5.7 | ❓ | ✅ | ❓ | Custom mode reported working with the split active (two one-tap reports). | [#123](https://github.com/monarchsofchaos004-gif/splitaudio/issues/123) |
+| Infinix | X6728 | Android 15 | 0.5.7 | ✅ | ❓ | ❓ | Simple mode reported working with the split active (two one-tap reports). | [#126](https://github.com/monarchsofchaos004-gif/splitaudio/issues/126) |
+| Retroid | Pocket Flip2 | Android 13 | 0.5.7 | ❓ | ⚠️ | ❓ | Reported working; the split had not run yet when the report was sent, so it is waiting for a confirming report. | [#128](https://github.com/monarchsofchaos004-gif/splitaudio/issues/128) |
+| realme | RMX3830 | Android 15 | 0.5.7 | ⚠️ | ❓ | ❓ | Reported working; the split had not run yet when the report was sent, so it is waiting for a confirming report. | [#130](https://github.com/monarchsofchaos004-gif/splitaudio/issues/130) |
+| realme | RMX5011 | Android 17 | 0.5.7 | ❓ | ✅ | ❓ | Custom mode reported working with the split active (three one-tap reports). | [#132](https://github.com/monarchsofchaos004-gif/splitaudio/issues/132) |
+| Google | Pixel 7 Pro | Android 17 | 0.5.7 | ⚠️ | ❓ | ❓ | Reported working; the split had not run yet when the report was sent, so it is waiting for a confirming report. | [#133](https://github.com/monarchsofchaos004-gif/splitaudio/issues/133) |
+| OPPO | CPH2739 | Android 16 | 0.5.7 | ⚠️ | ❓ | ❓ | Reported working; the split had not run yet when the report was sent, so it is waiting for a confirming report. | [#134](https://github.com/monarchsofchaos004-gif/splitaudio/issues/134) |
+| POCO | 2201116PG | Android 13 | 0.5.7 | ❓ | ⚠️ | ❓ | Reported working; the split had not run yet when the report was sent, so it is waiting for a confirming report. | [#135](https://github.com/monarchsofchaos004-gif/splitaudio/issues/135) |
+| HONOR | GFY-LX2 | Android 14 | 0.5.7 | ✅ | ❓ | ❓ | Simple mode reported working with the split active (several one-tap reports). | [#136](https://github.com/monarchsofchaos004-gif/splitaudio/issues/136) |
 
 ## How to add a row
 
