@@ -129,3 +129,8 @@ so it can be fixed; the row can say ❌ until then.
 每台手機的音訊層都被廠商改過一點，所以能不能用要靠大家回報。**加一行你的機型**就是最有用的貢獻（不用會寫程式）：
 在 GitHub 上點鉛筆編輯這個檔、照表格加一行、送出 pull request 即可；沒測到的欄位填 ❓。
 不能用的話順便開一個「device report」issue，方便修。
+| Infinix | X6532 | Android 14 | 0.5.7 | ✅ | ❓ | ❓ | Simple mode reported working with the split active. | [#139](https://github.com/monarchsofchaos004-gif/splitaudio/issues/139) |
+| OnePlus | CPH2663 | Android 15 | 0.5.7 | ❓ | ✅ | ❓ | Custom mode reported working with the split active (two one-tap reports). | [#141](https://github.com/monarchsofchaos004-gif/splitaudio/issues/141) |
+| Xiaomi | 2407FPN8EG | Android 16 | 0.5.7 | ✅ | ❓ | ❓ | Simple mode reported working with the split active. | [#142](https://github.com/monarchsofchaos004-gif/splitaudio/issues/142) |
+| Motorola | edge 70 fusion | Android 17 | 0.5.7 | ⚠️ | ❓ | ❓ | Reported working; the split had not run recently when the report was sent, so it is waiting for a confirming report. | [#144](https://github.com/monarchsofchaos004-gif/splitaudio/issues/144) |
+| Redmi | 25102RKBEC | Android 17 | 0.5.7 | ✅ | ✅ | ❓ | Simple and Custom mode both reported working with the split active (several one-tap reports). | [#145](https://github.com/monarchsofchaos004-gif/splitaudio/issues/145) |
