@@ -25,7 +25,7 @@ jobs:
       - name: Android SDK components
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;37.0.0" >/dev/null
 
       - name: Build routing helper (AppRoute.java -> approute.dex)
         run: sh route/build_dex.sh
