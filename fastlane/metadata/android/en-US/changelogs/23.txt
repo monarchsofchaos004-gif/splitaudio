@@ -1,0 +1,1 @@
+Apps on your "Don't let it pause other apps" list get their normal sound behaviour back right away when you take them off the list, stop the split or switch to Simple mode (seen on a Pixel with Android 17, thanks to a very detailed report).
