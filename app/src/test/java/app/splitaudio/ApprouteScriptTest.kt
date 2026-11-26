@@ -120,10 +120,10 @@ class ApprouteScriptTest {
         assertEquals("com.example.video", File(tmp, "approute.nofocus.applied").readText().trim())
         File(tmp, "approute.nofocus").writeText("com.example.other\n")   // 換一個
         sh("startmap")
-        assertEquals(listOf("set com.example.video TAKE_AUDIO_FOCUS ignore", "set com.example.video TAKE_AUDIO_FOCUS default",
+        assertEquals(listOf("set com.example.video TAKE_AUDIO_FOCUS ignore", "set com.example.video TAKE_AUDIO_FOCUS allow",
             "set com.example.other TAKE_AUDIO_FOCUS ignore"), appopsCalls())
         sh("stop")
-        assertEquals("set com.example.other TAKE_AUDIO_FOCUS default", appopsCalls().last())
+        assertEquals("set com.example.other TAKE_AUDIO_FOCUS allow", appopsCalls().last())
         assertFalse(File(tmp, "approute.nofocus.applied").exists())
     }
 }

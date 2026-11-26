@@ -32,16 +32,17 @@ settoken(){
 }
 # "Don't let it pause other apps" (0.5, experimental, Custom mode): $D/approute.nofocus (written by the app, one package name per line)
 #   -> appops TAKE_AUDIO_FOCUS ignore for those apps, so they can't take audio focus away from the music app. $D/approute.nofocus.applied
-#   remembers what was applied, so an app that was taken off the list (or the whole thing on stop / Simple mode) is set back to default.
+#   remembers what was applied, so an app that was taken off the list (or the whole thing on stop / Simple mode) is set back to allow
+#   (not "default": on Android 17 / Pixel an app left on "default" keeps being refused audio focus, issue #212).
 nofocus_apply(){
   NEW=$(grep -E '^[A-Za-z0-9_.]+$' $D/approute.nofocus 2>/dev/null | sort -u)
   OLD=$(grep -E '^[A-Za-z0-9_.]+$' $D/approute.nofocus.applied 2>/dev/null | sort -u)
-  for p in $OLD; do echo "$NEW" | grep -qx "$p" || { appops set "$p" TAKE_AUDIO_FOCUS default >/dev/null 2>&1; echo "$(date '+%H:%M:%S') nofocus: $p -> default" >> $LOG; }; done
+  for p in $OLD; do echo "$NEW" | grep -qx "$p" || { appops set "$p" TAKE_AUDIO_FOCUS allow >/dev/null 2>&1; echo "$(date '+%H:%M:%S') nofocus: $p -> allow" >> $LOG; }; done
   for p in $NEW; do appops set "$p" TAKE_AUDIO_FOCUS ignore >/dev/null 2>&1; echo "$(date '+%H:%M:%S') nofocus: $p -> ignore" >> $LOG; done
   if [ -n "$NEW" ]; then echo "$NEW" > $D/approute.nofocus.applied; else rm -f $D/approute.nofocus.applied; fi
 }
 nofocus_revert(){
-  for p in $(grep -E '^[A-Za-z0-9_.]+$' $D/approute.nofocus.applied 2>/dev/null); do appops set "$p" TAKE_AUDIO_FOCUS default >/dev/null 2>&1; echo "$(date '+%H:%M:%S') nofocus: $p -> default" >> $LOG; done
+  for p in $(grep -E '^[A-Za-z0-9_.]+$' $D/approute.nofocus.applied 2>/dev/null); do appops set "$p" TAKE_AUDIO_FOCUS allow >/dev/null 2>&1; echo "$(date '+%H:%M:%S') nofocus: $p -> allow" >> $LOG; done
   rm -f $D/approute.nofocus.applied
 }
 case "$1" in
